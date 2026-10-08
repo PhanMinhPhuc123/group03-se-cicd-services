@@ -1,0 +1,27 @@
+# .NET
+**/bin/
+**/obj/
+
+# Visual Studio Code
+.vscode/
+
+# User-specific files
+*.user
+*.suo
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Local application settings
+**/appsettings.json
+**/appsettings.Development.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Old repositories / local copies
+CNPM-N03/
+group03-se-cicd-services/
