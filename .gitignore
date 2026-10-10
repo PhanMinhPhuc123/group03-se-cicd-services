@@ -16,6 +16,7 @@
 
 # Local application settings
 **/appsettings.json
+!backend/ApiGateway/appsettings.json
 **/appsettings.Development.json
 
 # OS
