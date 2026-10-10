@@ -4,10 +4,11 @@ name: API Gateway CI
 on:
   push:
     branches:
-      - feature/api-gateway
+      - fix/api-gateway-workflow
     paths:
       - 'backend/ApiGateway/**'
       - '.github/workflows/api-gateway-ci.yml'
+
   pull_request:
     branches:
       - main
