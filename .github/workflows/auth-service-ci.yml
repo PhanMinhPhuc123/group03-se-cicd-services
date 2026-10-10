@@ -1,0 +1,33 @@
+
+name: AuthService CI
+
+on:
+  push:
+    branches:
+      - feature/auth-service
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/AuthService/**'
+      - '.github/workflows/auth-service-ci.yml'
+
+jobs:
+  build:
+    name: Build AuthService
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore backend/AuthService/AuthService.csproj
+
+      - name: Build AuthService
+        run: dotnet build backend/AuthService/AuthService.csproj --configuration Release --no-restore
