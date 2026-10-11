@@ -142,6 +142,77 @@ public class POIsController : ControllerBase
         return NoContent();
     }
 
+    // GET: api/POIs/nearby?latitude=10.7769&longitude=106.7009&radiusMeters=1000
+    [HttpGet("nearby")]
+    public async Task<ActionResult<IEnumerable<object>>> GetNearbyPOIs(
+        [FromQuery] double latitude,
+        [FromQuery] double longitude,
+        [FromQuery] double radiusMeters = 1000)
+    {
+        // Kiem tra toa do dau vao
+        if (latitude < -90 || latitude > 90 ||
+            longitude < -180 || longitude > 180)
+        {
+            return BadRequest("Latitude phai trong [-90, 90] va longitude trong [-180, 180].");
+        }
+
+        // Gioi han ban kinh tim kiem: tren 0 va toi da 100 km
+        if (radiusMeters <= 0 || radiusMeters > 100000)
+        {
+            return BadRequest("radiusMeters phai lon hon 0 va khong vuot qua 100000.");
+        }
+
+        // Chi lay POI dang hoat dong va co du toa do GPS
+        var pois = await _context.POIs
+            .AsNoTracking()
+            .Where(p => p.IsActive &&
+                        p.Latitude.HasValue &&
+                        p.Longitude.HasValue)
+            .ToListAsync();
+
+        const double earthRadiusMeters = 6371000;
+
+        var nearbyPOIs = pois
+            .Select(p =>
+            {
+                double poiLatitude = p.Latitude!.Value;
+                double poiLongitude = p.Longitude!.Value;
+
+                double dLat = ToRadians(poiLatitude - latitude);
+                double dLon = ToRadians(poiLongitude - longitude);
+
+                double a =
+                    Math.Pow(Math.Sin(dLat / 2), 2) +
+                    Math.Cos(ToRadians(latitude)) *
+                    Math.Cos(ToRadians(poiLatitude)) *
+                    Math.Pow(Math.Sin(dLon / 2), 2);
+
+                double distance = earthRadiusMeters *
+                    2 * Math.Asin(Math.Sqrt(Math.Clamp(a, 0, 1)));
+
+                return new
+                {
+                    p.Id,
+                    p.Name,
+                    p.Description,
+                    p.Location,
+                    Latitude = poiLatitude,
+                    Longitude = poiLongitude,
+                    DistanceMeters = Math.Round(distance, 2)
+                };
+            })
+            .Where(p => p.DistanceMeters <= radiusMeters)
+            .OrderBy(p => p.DistanceMeters)
+            .ToList();
+
+        return Ok(nearbyPOIs);
+    }
+
+    private static double ToRadians(double degrees)
+    {
+        return degrees * Math.PI / 180.0;
+    }
+
     private bool POIExists(int id)
     {
         return _context.POIs.Any(e => e.Id == id);
