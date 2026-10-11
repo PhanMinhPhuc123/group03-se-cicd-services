@@ -57,32 +57,34 @@ public class ToursController : ControllerBase
 
     // PUT: api/Tours/5
     // Cập nhật thông tin tour
-    [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateTour(int id, Tour tour)
+[HttpPut("{id}")]
+public async Task<IActionResult> UpdateTour(int id, Tour tour)
+{
+    // Kiểm tra ID trên URL có khớp với ID trong dữ liệu gửi lên không.
+    if (id != tour.Id)
     {
-        if (id != tour.Id)
-        {
-            return BadRequest();
-        }
-
-        _context.Entry(tour).State = EntityState.Modified;
-
-        try
-        {
-            await _context.SaveChangesAsync();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!TourExists(id))
-            {
-                return NotFound();
-            }
-
-            throw;
-        }
-
-        return NoContent();
+        return BadRequest("ID Tour trên URL không khớp với ID trong dữ liệu.");
     }
+
+    // Tìm Tour đang tồn tại trong cơ sở dữ liệu.
+    var existingTour = await _context.Tours.FindAsync(id);
+
+    if (existingTour == null)
+    {
+        return NotFound("Không tìm thấy Tour.");
+    }
+
+    // Chỉ cập nhật các trường thông tin của Tour.
+    // Không thay thế danh sách AccessCodes hiện có.
+    existingTour.Name = tour.Name;
+    existingTour.Description = tour.Description;
+    existingTour.IsActive = tour.IsActive;
+
+    await _context.SaveChangesAsync();
+
+    return NoContent();
+}
+
 
     // DELETE: api/Tours/5
     // Xóa tour
