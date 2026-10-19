@@ -127,6 +127,14 @@ namespace AuthService.Controllers
                     Message = "Sai tên đăng nhập hoặc mật khẩu!"
                 });
             }
+// Kiểm tra tài khoản có đang hoạt động không
+if (!user.IsActive)
+{
+    return Unauthorized(new
+    {
+        Message = "Tài khoản đã bị vô hiệu hóa!"
+    });
+}
 
             // Kiểm tra mật khẩu
             var verifyResult = _passwordHasher.VerifyHashedPassword(
