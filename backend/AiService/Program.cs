@@ -14,6 +14,8 @@ builder.Services.AddDbContext<AiDbContext>(options =>
 // RabbitMQ
 builder.Services.AddSingleton<RabbitMqConnection>();
 
+builder.Services.AddHostedService<PoiEventConsumerService>();
+
 // MinIO
 builder.Services.AddSingleton<MinioService>();
 
@@ -26,18 +28,15 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Bật Swagger khi cần kiểm tra API
+// Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
-// Cho phép sử dụng các Controller
 app.MapControllers();
 
-// Test kết nối RabbitMQ
+// Kiểm tra kết nối RabbitMQ và MinIO
 using (var scope = app.Services.CreateScope())
 {
     var rabbitMq = scope.ServiceProvider
@@ -50,4 +49,5 @@ using (var scope = app.Services.CreateScope())
 
     await minio.TestConnectionAsync();
 }
+
 app.Run();
