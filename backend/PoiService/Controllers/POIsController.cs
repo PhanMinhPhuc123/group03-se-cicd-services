@@ -54,16 +54,19 @@ public class POIsController : ControllerBase
         await _context.SaveChangesAsync();
 
         // 2. Phát sự kiện POI_CREATED sang RabbitMQ
-        await _rabbitMqPublisher.PublishAsync(
-            "POI_CREATED",
-            new
-            {
-                poiId = poi.Id,
-                name = poi.Name,
-                description = poi.Description,
-                location = poi.Location,
-                isActive = poi.IsActive
-            });
+await _rabbitMqPublisher.PublishAsync(
+    "POI_CREATED",
+    new
+    {
+        poiId = poi.Id,
+        name = poi.Name,
+        description = poi.Description,
+        location = poi.Location,
+        latitude = poi.Latitude,
+        longitude = poi.Longitude,
+        isActive = poi.IsActive
+    });
+
 
         // 3. Trả kết quả về client
         return CreatedAtAction(
@@ -90,16 +93,19 @@ public class POIsController : ControllerBase
             await _context.SaveChangesAsync();
 
             // 2. Phát sự kiện POI_UPDATED sang RabbitMQ
-            await _rabbitMqPublisher.PublishAsync(
-                "POI_UPDATED",
-                new
-                {
-                    poiId = poi.Id,
-                    name = poi.Name,
-                    description = poi.Description,
-                    location = poi.Location,
-                    isActive = poi.IsActive
-                });
+await _rabbitMqPublisher.PublishAsync(
+    "POI_UPDATED",
+    new
+    {
+        poiId = poi.Id,
+        name = poi.Name,
+        description = poi.Description,
+        location = poi.Location,
+        latitude = poi.Latitude,
+        longitude = poi.Longitude,
+        isActive = poi.IsActive
+    });
+
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -129,15 +135,17 @@ public class POIsController : ControllerBase
         // 1. Xóa POI khỏi PostgreSQL
         _context.POIs.Remove(poi);
         await _context.SaveChangesAsync();
+        // 2. Phát sự kiện POI_DELETED sang RabbitMQ  
+await _rabbitMqPublisher.PublishAsync(
+    "POI_DELETED",
+    new
+    {
+        poiId = poi.Id,
+        name = poi.Name,
+        latitude = poi.Latitude,
+        longitude = poi.Longitude
+    });
 
-        // 2. Phát sự kiện POI_DELETED sang RabbitMQ
-        await _rabbitMqPublisher.PublishAsync(
-            "POI_DELETED",
-            new
-            {
-                poiId = poi.Id,
-                name = poi.Name
-            });
 
         return NoContent();
     }
