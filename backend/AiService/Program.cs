@@ -13,6 +13,7 @@ builder.Services.AddDbContext<AiDbContext>(options =>
 
 // RabbitMQ
 builder.Services.AddSingleton<RabbitMqConnection>();
+builder.Services.AddHostedService<PoiEventConsumerService>();
 
 // MinIO
 builder.Services.AddSingleton<MinioService>();

@@ -1,34 +1,38 @@
-using RabbitMQ.Client;
+﻿using RabbitMQ.Client;
 
-namespace AiService.Messaging
+namespace AiService.Messaging;
+
+public class RabbitMqConnection
 {
-    public class RabbitMqConnection
+    private readonly IConfiguration _configuration;
+
+    public RabbitMqConnection(IConfiguration configuration)
     {
-        private readonly IConfiguration _configuration;
+        _configuration = configuration;
+    }
 
-        public RabbitMqConnection(IConfiguration configuration)
+    public async Task TestConnectionAsync()
+    {
+        var host = _configuration["RabbitMQ:Host"] ?? "localhost";
+        var portValue = _configuration["RabbitMQ:Port"];
+
+        var port = int.TryParse(portValue, out var parsedPort)
+            ? parsedPort
+            : 5672;
+
+        var username = _configuration["RabbitMQ:Username"] ?? "guest";
+        var password = _configuration["RabbitMQ:Password"] ?? "guest";
+
+        var factory = new ConnectionFactory
         {
-            _configuration = configuration;
-        }
+            HostName = host,
+            Port = port,
+            UserName = username,
+            Password = password
+        };
 
-        public async Task TestConnectionAsync()
-        {
-            var host = _configuration["RabbitMQ:Host"];
-            var port = int.Parse(_configuration["RabbitMQ:Port"]!);
-            var username = _configuration["RabbitMQ:Username"];
-            var password = _configuration["RabbitMQ:Password"];
+        await using var connection = await factory.CreateConnectionAsync();
 
-            var factory = new ConnectionFactory
-            {
-                HostName = host,
-                Port = port,
-                UserName = username,
-                Password = password
-            };
-
-            await using var connection = await factory.CreateConnectionAsync();
-
-            Console.WriteLine("RabbitMQ connection successful!");
-        }
+        Console.WriteLine("RabbitMQ connection successful!");
     }
 }

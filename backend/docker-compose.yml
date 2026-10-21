@@ -1,5 +1,6 @@
 
 
+
 services:
   # 1. Ứng dụng AiService
   aiservice:
@@ -8,12 +9,10 @@ services:
       dockerfile: Dockerfile
     container_name: app_aiservice
     ports:
-      - "8080:8080"
+      - "18080:8080"
     env_file:
       - .env
     environment:
-      # Ghi đè cấu hình appsettings.json bằng các biến môi trường
-      # Dùng tên service (postgres, rabbitmq, minio) làm Hostname
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
       - RabbitMQ__Host=rabbitmq
       - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
@@ -72,6 +71,27 @@ services:
     volumes:
       - minio_data:/bitnami/minio/data
     command: server /bitnami/minio/data --console-address ":9001"
+  # 5. Ứng dụng PoiService
+  poiservice:
+    build:
+      context: ./PoiService
+      dockerfile: Dockerfile
+    container_name: app_poiservice
+    ports:
+      - "5252:8080"
+    env_file:
+      - .env
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=poiserver;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
+      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+    depends_on:
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   postgres_data:
