@@ -67,6 +67,32 @@ VALUES
  'Hệ thống đường hầm lịch sử gắn liền với Chiến tranh Việt Nam.',
  'Củ Chi, Thành phố Hồ Chí Minh, Việt Nam', TRUE);
 
+-- 3.1. Cap nhat toa do dia ly cho 15 POI.
+-- Thu tu: Latitude (vi do), Longitude (kinh do).
+UPDATE public."POIs" AS p
+SET
+    "Latitude" = coords.latitude,
+    "Longitude" = coords.longitude
+FROM (
+    VALUES
+        (1, 10.77702::double precision, 106.69540::double precision),
+        (2, 10.77938, 106.69219),
+        (3, 10.77998, 106.70002),
+        (4, 10.77980, 106.69900),
+        (5, 10.77257, 106.69802),
+        (6, 10.77460, 106.70190),
+        (7, 10.77228, 106.70649),
+        (8, 10.77671, 106.70322),
+        (9, 10.77592, 106.70000),
+        (10, 10.75380, 106.66860),
+        (11, 10.74980, 106.65190),
+        (12, 10.77479, 106.69309),
+        (13, 10.78781, 106.70646),
+        (14, 10.79500, 106.72180),
+        (15, 11.06304, 106.52912)
+) AS coords(id, latitude, longitude)
+WHERE p."Id" = coords.id;
+
 -- 4. Tao lai 10 tour.
 INSERT INTO public."Tours" ("Id", "Name", "Description", "IsActive")
 VALUES
