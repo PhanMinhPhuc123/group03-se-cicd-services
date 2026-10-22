@@ -1,3 +1,4 @@
+
 using AiService.Data;
 using AiService.Messaging;
 using AiService.Services;
@@ -13,6 +14,7 @@ builder.Services.AddDbContext<AiDbContext>(options =>
 
 // RabbitMQ
 builder.Services.AddSingleton<RabbitMqConnection>();
+builder.Services.AddHostedService<PoiEventConsumerService>();
 
 // MinIO
 builder.Services.AddSingleton<MinioService>();
@@ -26,21 +28,15 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Cấu hình Swagger khi chạy môi trường Development
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Swagger
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
-// Cho phép sử dụng các Controller
 app.MapControllers();
 
-// Test kết nối RabbitMQ
+// Kiểm tra kết nối RabbitMQ và MinIO
 using (var scope = app.Services.CreateScope())
 {
     var rabbitMq = scope.ServiceProvider
@@ -53,4 +49,5 @@ using (var scope = app.Services.CreateScope())
 
     await minio.TestConnectionAsync();
 }
+
 app.Run();
