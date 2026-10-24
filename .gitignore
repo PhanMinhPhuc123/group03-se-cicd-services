@@ -26,3 +26,4 @@ Thumbs.db
 # Old repositories / local copies
 CNPM-N03/
 group03-se-cicd-services/
+node_modules/
