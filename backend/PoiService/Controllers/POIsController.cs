@@ -21,13 +21,19 @@ public class POIsController : ControllerBase
         _rabbitMqPublisher = rabbitMqPublisher;
     }
 
-    // GET: api/POIs
-    // Lấy danh sách tất cả POI
-    [HttpGet]
-    public async Task<ActionResult<IEnumerable<POI>>> GetPOIs()
-    {
-        return await _context.POIs.ToListAsync();
-    }
+  // GET: api/POIs
+// Chỉ lấy các địa điểm đang hoạt động để hiển thị cho khách tham quan.
+[HttpGet]
+public async Task<ActionResult<IEnumerable<POI>>> GetPOIs()
+{
+    var pois = await _context.POIs
+        .AsNoTracking()
+        .Where(p => p.IsActive)
+        .OrderBy(p => p.Id)
+        .ToListAsync();
+
+    return Ok(pois);
+}
 
     // GET: api/POIs/5
     // Lấy thông tin một POI theo ID
