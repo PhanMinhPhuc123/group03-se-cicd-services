@@ -126,6 +126,43 @@ namespace PoiService.Migrations
                     b.ToTable("TourPOIs");
                 });
 
+            modelBuilder.Entity("PoiService.Models.VisitSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("EntryTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExitReason")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime?>("ExitTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<bool>("LocationConsent")
+                        .HasColumnType("boolean");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("POIId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryTime");
+
+                    b.HasIndex("POIId");
+
+                    b.ToTable("VisitSessions");
+                });
+
             modelBuilder.Entity("PoiService.Models.AccessCode", b =>
                 {
                     b.HasOne("PoiService.Models.Tour", "Tour")
@@ -154,6 +191,16 @@ namespace PoiService.Migrations
                     b.Navigation("POI");
 
                     b.Navigation("Tour");
+                });
+
+            modelBuilder.Entity("PoiService.Models.VisitSession", b =>
+                {
+                    b.HasOne("PoiService.Models.POI", "POI")
+                        .WithMany()
+                        .HasForeignKey("POIId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("POI");
                 });
 
             modelBuilder.Entity("PoiService.Models.Tour", b =>
