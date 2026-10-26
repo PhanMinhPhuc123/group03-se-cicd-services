@@ -19,6 +19,9 @@ builder.Services.AddHostedService<PoiEventConsumerService>();
 // MinIO
 builder.Services.AddSingleton<MinioService>();
 
+// Dịch vụ tạo lời thuyết minh bằng OpenAI
+builder.Services.AddHttpClient<OpenAiNarrationService>();
+
 // Controller
 builder.Services.AddControllers();
 

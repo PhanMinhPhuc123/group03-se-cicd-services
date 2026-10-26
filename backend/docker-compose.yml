@@ -1,5 +1,4 @@
-
-
+﻿
 services:
   # 1. Ứng dụng AiService
   aiservice:
@@ -12,15 +11,28 @@ services:
     env_file:
       - .env
     environment:
-      # Ghi đè cấu hình appsettings.json bằng các biến môi trường
-      # Dùng tên service (postgres, rabbitmq, minio) làm Hostname
+      # Kết nối PostgreSQL
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+
+      # Kết nối RabbitMQ
       - RabbitMQ__Host=rabbitmq
       - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
       - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
+
+      # Kết nối MinIO
       - Minio__Endpoint=minio:9000
       - Minio__AccessKey=${MINIO_ROOT_USER}
       - Minio__SecretKey=${MINIO_ROOT_PASSWORD}
+      - Minio__BucketName=${MINIO_BUCKET_NAME:-narration-audio}
+      - Minio__UseSSL=false
+
+      # Cấu hình OpenAI
+      - OpenAI__ApiKey=${OPENAI_API_KEY}
+      - OpenAI__BaseUrl=${OPENAI_BASE_URL:-https://api.openai.com/v1/}
+      - OpenAI__TextModel=${OPENAI_TEXT_MODEL:-gpt-4o-mini}
+      - OpenAI__TtsModel=${OPENAI_TTS_MODEL:-gpt-4o-mini-tts}
+      - OpenAI__TtsVoice=${OPENAI_TTS_VOICE:-alloy}
+
     depends_on:
       postgres:
         condition: service_started
@@ -29,7 +41,7 @@ services:
       minio:
         condition: service_started
 
-  # 2. Database PostgreSQL (dùng pgvector như bạn chọn)
+  # 2. Database PostgreSQL
   postgres:
     image: pgvector/pgvector:pg17
     container_name: ai-postgres
