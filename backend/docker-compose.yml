@@ -11,16 +11,19 @@ services:
       - "18080:8080"
     env_file:
       - .env
+    
     environment:
-      # Ghi đè cấu hình appsettings.json bằng các biến môi trường
-      # Dùng tên service (postgres, rabbitmq, minio) làm Hostname
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      - RabbitMQ__Host=rabbitmq
-      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
-      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
-      - Minio__Endpoint=minio:9000
-      - Minio__AccessKey=${MINIO_ROOT_USER}
-      - Minio__SecretKey=${MINIO_ROOT_PASSWORD}
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: ${RABBITMQ_DEFAULT_USER}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS}
+      Minio__Endpoint: minio:9000
+      Minio__AccessKey: ${MINIO_ROOT_USER}
+      Minio__SecretKey: ${MINIO_ROOT_PASSWORD}
+      OpenAI__ApiKey: ${OPENAI_API_KEY}
+
     depends_on:
       postgres:
         condition: service_started
@@ -73,6 +76,27 @@ services:
       - minio_data:/bitnami/minio/data
     command: server /bitnami/minio/data --console-address ":9001"
 
+
+  poiservice:
+    build:
+      context: ./PoiService
+      dockerfile: Dockerfile
+    container_name: app_poiservice
+    ports:
+      - "5252:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=poi_database;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: ${RABBITMQ_DEFAULT_USER}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS}
+    depends_on:
+      postgres:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
 volumes:
   postgres_data:
   minio_data:

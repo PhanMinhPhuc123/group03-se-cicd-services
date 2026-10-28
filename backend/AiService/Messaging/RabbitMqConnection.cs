@@ -14,7 +14,7 @@ namespace AiService.Messaging
         public async Task TestConnectionAsync()
         {
             var host = _configuration["RabbitMQ:Host"];
-            var port = int.Parse(_configuration["RabbitMQ:Port"]!);
+            var port = _configuration.GetValue<int>("RabbitMQ:Port", 5672);
             var username = _configuration["RabbitMQ:Username"];
             var password = _configuration["RabbitMQ:Password"];
 

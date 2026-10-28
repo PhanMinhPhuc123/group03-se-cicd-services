@@ -1,0 +1,294 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "AiService/1.0.0": {
+        "dependencies": {
+          "Microsoft.AspNetCore.OpenApi": "10.0.12",
+          "Minio": "7.0.0",
+          "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.3",
+          "RabbitMQ.Client": "7.2.2",
+          "Swashbuckle.AspNetCore": "10.2.3"
+        },
+        "runtime": {
+          "AiService.dll": {}
+        }
+      },
+      "CommunityToolkit.HighPerformance/8.4.0": {
+        "runtime": {
+          "lib/net8.0/CommunityToolkit.HighPerformance.dll": {
+            "assemblyVersion": "8.4.0.0",
+            "fileVersion": "8.4.0.1"
+          }
+        }
+      },
+      "Microsoft.AspNetCore.OpenApi/10.0.12": {
+        "dependencies": {
+          "Microsoft.OpenApi": "2.12.0"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.AspNetCore.OpenApi.dll": {
+            "assemblyVersion": "10.0.12.0",
+            "fileVersion": "10.0.1226.42308"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore/10.0.12": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Abstractions": "10.0.12"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.EntityFrameworkCore.dll": {
+            "assemblyVersion": "10.0.12.0",
+            "fileVersion": "10.0.1226.42308"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Abstractions/10.0.12": {
+        "runtime": {
+          "lib/net10.0/Microsoft.EntityFrameworkCore.Abstractions.dll": {
+            "assemblyVersion": "10.0.12.0",
+            "fileVersion": "10.0.1226.42308"
+          }
+        }
+      },
+      "Microsoft.EntityFrameworkCore.Relational/10.0.12": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.12"
+        },
+        "runtime": {
+          "lib/net10.0/Microsoft.EntityFrameworkCore.Relational.dll": {
+            "assemblyVersion": "10.0.12.0",
+            "fileVersion": "10.0.1226.42308"
+          }
+        }
+      },
+      "Microsoft.OpenApi/2.12.0": {
+        "runtime": {
+          "lib/net8.0/Microsoft.OpenApi.dll": {
+            "assemblyVersion": "2.12.0.0",
+            "fileVersion": "2.12.0.0"
+          }
+        }
+      },
+      "Minio/7.0.0": {
+        "dependencies": {
+          "CommunityToolkit.HighPerformance": "8.4.0",
+          "System.IO.Hashing": "9.0.4",
+          "System.Reactive": "6.0.1"
+        },
+        "runtime": {
+          "lib/net8.0/Minio.dll": {
+            "assemblyVersion": "7.0.0.0",
+            "fileVersion": "7.0.0.0"
+          }
+        }
+      },
+      "Npgsql/10.0.3": {
+        "runtime": {
+          "lib/net10.0/Npgsql.dll": {
+            "assemblyVersion": "10.0.3.0",
+            "fileVersion": "10.0.3.0"
+          }
+        }
+      },
+      "Npgsql.EntityFrameworkCore.PostgreSQL/10.0.3": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "10.0.12",
+          "Microsoft.EntityFrameworkCore.Relational": "10.0.12",
+          "Npgsql": "10.0.3"
+        },
+        "runtime": {
+          "lib/net10.0/Npgsql.EntityFrameworkCore.PostgreSQL.dll": {
+            "assemblyVersion": "10.0.3.0",
+            "fileVersion": "10.0.3.0"
+          }
+        }
+      },
+      "RabbitMQ.Client/7.2.2": {
+        "runtime": {
+          "lib/net8.0/RabbitMQ.Client.dll": {
+            "assemblyVersion": "7.0.0.0",
+            "fileVersion": "7.2.2.0"
+          }
+        }
+      },
+      "Swashbuckle.AspNetCore/10.2.3": {
+        "dependencies": {
+          "Swashbuckle.AspNetCore.Swagger": "10.2.3",
+          "Swashbuckle.AspNetCore.SwaggerGen": "10.2.3",
+          "Swashbuckle.AspNetCore.SwaggerUI": "10.2.3"
+        }
+      },
+      "Swashbuckle.AspNetCore.Swagger/10.2.3": {
+        "dependencies": {
+          "Microsoft.OpenApi": "2.12.0"
+        },
+        "runtime": {
+          "lib/net10.0/Swashbuckle.AspNetCore.Swagger.dll": {
+            "assemblyVersion": "10.2.3.0",
+            "fileVersion": "10.2.3.2721"
+          }
+        }
+      },
+      "Swashbuckle.AspNetCore.SwaggerGen/10.2.3": {
+        "dependencies": {
+          "Swashbuckle.AspNetCore.Swagger": "10.2.3"
+        },
+        "runtime": {
+          "lib/net10.0/Swashbuckle.AspNetCore.SwaggerGen.dll": {
+            "assemblyVersion": "10.2.3.0",
+            "fileVersion": "10.2.3.2721"
+          }
+        }
+      },
+      "Swashbuckle.AspNetCore.SwaggerUI/10.2.3": {
+        "runtime": {
+          "lib/net10.0/Swashbuckle.AspNetCore.SwaggerUI.dll": {
+            "assemblyVersion": "10.2.3.0",
+            "fileVersion": "10.2.3.2721"
+          }
+        }
+      },
+      "System.IO.Hashing/9.0.4": {
+        "runtime": {
+          "lib/net9.0/System.IO.Hashing.dll": {
+            "assemblyVersion": "9.0.0.4",
+            "fileVersion": "9.0.425.16305"
+          }
+        }
+      },
+      "System.Reactive/6.0.1": {
+        "runtime": {
+          "lib/net6.0/System.Reactive.dll": {
+            "assemblyVersion": "6.0.0.0",
+            "fileVersion": "6.0.1.7420"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "AiService/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "CommunityToolkit.HighPerformance/8.4.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-flxspiBs0G/0GMp7IK2J2ijV9bTG6hEwFc/z6ekHqB6nwRJ4Ry2yLdx+TkbCUYFCl4XhABkAwomeKbT6zM2Zlg==",
+      "path": "communitytoolkit.highperformance/8.4.0",
+      "hashPath": "communitytoolkit.highperformance.8.4.0.nupkg.sha512"
+    },
+    "Microsoft.AspNetCore.OpenApi/10.0.12": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7RnQ/UKn+kK3JDLmTpW+vVqNErWthGPAVAy1aIiBzv4ucQ6g9NFvOJUuT0PHcpvcJxGVxctMxj6t+NESWMrgHQ==",
+      "path": "microsoft.aspnetcore.openapi/10.0.12",
+      "hashPath": "microsoft.aspnetcore.openapi.10.0.12.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore/10.0.12": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-e7OrVN8U5yr4kuwdTHWBHGVQIVsGfMkAr0Ej1/BnrS989Q0XBVANpIzNZ2bc1GvMZ0/XwMt5InTnmKskxGy99Q==",
+      "path": "microsoft.entityframeworkcore/10.0.12",
+      "hashPath": "microsoft.entityframeworkcore.10.0.12.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore.Abstractions/10.0.12": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-kDrux7T6C3V/YYYe2LXr7x6AEsVyq5Y2YoTE9er1SwbDtap3z1g8RgxNh5eKQVyB4T+DKvBBJ4Ezd/VZzJQJZg==",
+      "path": "microsoft.entityframeworkcore.abstractions/10.0.12",
+      "hashPath": "microsoft.entityframeworkcore.abstractions.10.0.12.nupkg.sha512"
+    },
+    "Microsoft.EntityFrameworkCore.Relational/10.0.12": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-OiHmr8XzX96dbgMsYGe8qoqg4KxibdZG2r0QUVJBGktFInOp8IrABe8jvcbo5hrqeWfbwpK7fCEBiEPbY/ik4A==",
+      "path": "microsoft.entityframeworkcore.relational/10.0.12",
+      "hashPath": "microsoft.entityframeworkcore.relational.10.0.12.nupkg.sha512"
+    },
+    "Microsoft.OpenApi/2.12.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-0xB/be+f6qYOhvQPUrVsLrau+fkowYv6gt9RIkajMhwT7sZnqtcA797yW3bS5kgSje+AQW4xZgyLnW641YFioQ==",
+      "path": "microsoft.openapi/2.12.0",
+      "hashPath": "microsoft.openapi.2.12.0.nupkg.sha512"
+    },
+    "Minio/7.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-GiCD0koYBM8/VCXRkrfSzOtySEmrA2ngceJuxRO5H+/uGodiTX+XPaUHQq9/1DpaeBxWnkmrgqu52dwuZqIYgw==",
+      "path": "minio/7.0.0",
+      "hashPath": "minio.7.0.0.nupkg.sha512"
+    },
+    "Npgsql/10.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-7nb5YzXuvWWJxB0J8DiyL3we+X4FOctZrt0fIBnucOIaIevFEEwGQVZKtiu9olXdlNAK1eNgqSral6r/jlhI4w==",
+      "path": "npgsql/10.0.3",
+      "hashPath": "npgsql.10.0.3.nupkg.sha512"
+    },
+    "Npgsql.EntityFrameworkCore.PostgreSQL/10.0.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-IPGrrZnRkuW7OlHDhUESZz4G5DLkW7Nej/O3Cx+0iTsgyU5XJxBgpsvTHLloo3WWuAKKbDHXBvWPVkX1deRh1Q==",
+      "path": "npgsql.entityframeworkcore.postgresql/10.0.3",
+      "hashPath": "npgsql.entityframeworkcore.postgresql.10.0.3.nupkg.sha512"
+    },
+    "RabbitMQ.Client/7.2.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-k4b6RnTXpLbsF96V93ooNYxgPMnoA2tEm24B6AXNJr1mG8wwNYdA1XJtgU66L5xqeGyveS7SJriRzlX3cbqQNA==",
+      "path": "rabbitmq.client/7.2.2",
+      "hashPath": "rabbitmq.client.7.2.2.nupkg.sha512"
+    },
+    "Swashbuckle.AspNetCore/10.2.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-8KNh1RWvofdU6DVLyBs4Z/OpUMnmf8oNvJQc0QxpwySRbi42bwLfdVMMrXZWANg5U5KQGQq1xW6r/hlcqw99tQ==",
+      "path": "swashbuckle.aspnetcore/10.2.3",
+      "hashPath": "swashbuckle.aspnetcore.10.2.3.nupkg.sha512"
+    },
+    "Swashbuckle.AspNetCore.Swagger/10.2.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-1jUUs3WQnrS0FUtaZPLSy1yYMEwS1zlvDmvQ2/eldPHUANX0LJSLVZecCMgSMdeGiRqeaRrIXLtSz++TCiTMww==",
+      "path": "swashbuckle.aspnetcore.swagger/10.2.3",
+      "hashPath": "swashbuckle.aspnetcore.swagger.10.2.3.nupkg.sha512"
+    },
+    "Swashbuckle.AspNetCore.SwaggerGen/10.2.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-y7t4coDRAeFYChmvlMRiH2OjbiRrm9AVIDgt17fQfs3x9PVAI5PiwWYOhg+4F13R4Q36WDc9lqfoOnNa3tNbGg==",
+      "path": "swashbuckle.aspnetcore.swaggergen/10.2.3",
+      "hashPath": "swashbuckle.aspnetcore.swaggergen.10.2.3.nupkg.sha512"
+    },
+    "Swashbuckle.AspNetCore.SwaggerUI/10.2.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-nthWONRs/FJ4yyG206g1cC52WEG8EqrjuMWjGdR+5XG7lbjFto6NqcI9EMICgVFom/UivIjUVwI76ZHbHwTPfQ==",
+      "path": "swashbuckle.aspnetcore.swaggerui/10.2.3",
+      "hashPath": "swashbuckle.aspnetcore.swaggerui.10.2.3.nupkg.sha512"
+    },
+    "System.IO.Hashing/9.0.4": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-WogPvgAFqQORFD8Iyha6RZ+/1QB3dsWRWxbwi8/HHVgiGQ8z0oMWpwe8Kk3Ti+Roe+P6a3sBg+WwBfEsyziZKg==",
+      "path": "system.io.hashing/9.0.4",
+      "hashPath": "system.io.hashing.9.0.4.nupkg.sha512"
+    },
+    "System.Reactive/6.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-rHaWtKDwCi9qJ3ObKo8LHPMuuwv33YbmQi7TcUK1C264V3MFnOr5Im7QgCTdLniztP3GJyeiSg5x8NqYJFqRmg==",
+      "path": "system.reactive/6.0.1",
+      "hashPath": "system.reactive.6.0.1.nupkg.sha512"
+    }
+  }
+}
