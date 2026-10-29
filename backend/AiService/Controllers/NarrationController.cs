@@ -1,4 +1,5 @@
 
+using System.IO;
 using AiService.Contracts;
 using AiService.Data;
 using AiService.Services;
@@ -29,12 +30,14 @@ public sealed class NarrationController : ControllerBase
     }
 
     /// <summary>
-    /// Sinh nội dung thuyết minh cho một POI bằng ngôn ngữ được chọn.
+    /// Generates narration for a POI in the requested language.
     /// </summary>
     [HttpPost("narration")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GenerateNarration(
         [FromBody] GenerateNarrationRequest request,
         CancellationToken cancellationToken)
@@ -46,7 +49,7 @@ public sealed class NarrationController : ControllerBase
             return BadRequest(new
             {
                 success = false,
-                message = "PoiId phải lớn hơn 0 và Language không được để trống (tối đa 50 ký tự)."
+                message = "PoiId must be greater than 0 and Language must not be empty (maximum 50 characters)."
             });
         }
 
@@ -61,7 +64,7 @@ public sealed class NarrationController : ControllerBase
             return NotFound(new
             {
                 success = false,
-                message = $"Không tìm thấy POI đang hoạt động có mã {request.PoiId}."
+                message = $"No active POI was found with ID {request.PoiId}."
             });
         }
 
@@ -83,6 +86,36 @@ public sealed class NarrationController : ControllerBase
                 narration = text
             });
         }
+        catch (InvalidDataException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Narration output rejected for POI {PoiId}.",
+                request.PoiId);
+
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                new
+                {
+                    success = false,
+                    code = "NARRATION_OUTPUT_INVALID",
+                    message = "The AI model returned empty or incorrect-language narration. Please retry."
+                });
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Unsupported narration request for POI {PoiId}.",
+                request.PoiId);
+
+            return BadRequest(new
+            {
+                success = false,
+                code = "INVALID_NARRATION_REQUEST",
+                message = ex.Message
+            });
+        }
         catch (InvalidOperationException ex)
         {
             _logger.LogError(
@@ -95,14 +128,15 @@ public sealed class NarrationController : ControllerBase
                 new
                 {
                     success = false,
-                    message = ex.Message
+                    code = "NARRATION_CONFIGURATION_ERROR",
+                    message = "AI narration is not configured correctly. Check the AiService configuration."
                 });
         }
         catch (HttpRequestException ex)
         {
             _logger.LogError(
                 ex,
-                "OpenAI narration failed for POI {PoiId}. HTTP status: {StatusCode}",
+                "AI narration provider request failed for POI {PoiId}. HTTP status: {StatusCode}",
                 request.PoiId,
                 ex.StatusCode);
 
@@ -111,18 +145,48 @@ public sealed class NarrationController : ControllerBase
                 new
                 {
                     success = false,
-                    message = "Nhà cung cấp AI không xử lý được yêu cầu. Kiểm tra log AiService để biết nguyên nhân."
+                    code = "NARRATION_PROVIDER_ERROR",
+                    message = "The AI provider could not process the narration request. Check AiService logs."
+                });
+        }
+        catch (OperationCanceledException) when (
+            cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogInformation(
+                "Narration request cancelled for POI {PoiId}.",
+                request.PoiId);
+
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unexpected error generating narration for POI {PoiId}.",
+                request.PoiId);
+
+            return StatusCode(
+                StatusCodes.Status500InternalServerError,
+                new
+                {
+                    success = false,
+                    code = "NARRATION_INTERNAL_ERROR",
+                    message = "An unexpected error occurred while generating narration."
                 });
         }
     }
 
     /// <summary>
-    /// Sinh thuyết minh, tạo MP3, lưu vào MinIO và trả về URL phát âm thanh.
+    /// Generates narration, converts it to MP3, stores it in MinIO,
+    /// and returns the audio URL.
     /// </summary>
     [HttpPost("narration/audio")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GenerateNarrationAudio(
         [FromBody] GenerateNarrationAudioRequest request,
         CancellationToken cancellationToken)
@@ -134,7 +198,7 @@ public sealed class NarrationController : ControllerBase
             return BadRequest(new
             {
                 success = false,
-                message = "PoiId phải lớn hơn 0 và Language không được để trống (tối đa 50 ký tự)."
+                message = "PoiId must be greater than 0 and Language must not be empty (maximum 50 characters)."
             });
         }
 
@@ -149,13 +213,13 @@ public sealed class NarrationController : ControllerBase
             return NotFound(new
             {
                 success = false,
-                message = $"Không tìm thấy POI đang hoạt động có mã {request.PoiId}."
+                message = $"No active POI was found with ID {request.PoiId}."
             });
         }
 
         try
         {
-            // Bước 1: Sinh nội dung thuyết minh.
+            // Step 1: Generate narration text.
             var narration = await _narrationService.GenerateNarrationAsync(
                 poi.Name,
                 poi.Description,
@@ -163,13 +227,13 @@ public sealed class NarrationController : ControllerBase
                 request.Language.Trim(),
                 cancellationToken);
 
-            // Bước 2: Chuyển nội dung thành giọng nói MP3.
+            // Step 2: Convert narration to MP3 audio.
             var audioBytes = await _narrationService.GenerateSpeechAsync(
                 narration,
                 request.Voice,
                 cancellationToken);
 
-            // Bước 3: Tạo tên tệp duy nhất và lưu vào MinIO.
+            // Step 3: Store the audio in MinIO.
             var objectName = $"{Guid.NewGuid():N}.mp3";
 
             await _minioService.UploadAudioAsync(
@@ -177,7 +241,7 @@ public sealed class NarrationController : ControllerBase
                 audioBytes,
                 cancellationToken);
 
-            // Bước 4: Trả kết quả cho client.
+            // Step 4: Return the result.
             return Ok(new
             {
                 success = true,
@@ -187,6 +251,36 @@ public sealed class NarrationController : ControllerBase
                 narration,
                 audioContentType = "audio/mpeg",
                 audioUrl = $"{Request.Scheme}://{Request.Host}/api/ai/audio/{objectName}"
+            });
+        }
+        catch (InvalidDataException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Narration output rejected before audio generation for POI {PoiId}.",
+                request.PoiId);
+
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                new
+                {
+                    success = false,
+                    code = "NARRATION_OUTPUT_INVALID",
+                    message = "The AI model returned empty or incorrect-language narration. Audio was not generated."
+                });
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Invalid narration audio request for POI {PoiId}.",
+                request.PoiId);
+
+            return BadRequest(new
+            {
+                success = false,
+                code = "INVALID_AUDIO_REQUEST",
+                message = ex.Message
             });
         }
         catch (InvalidOperationException ex)
@@ -201,16 +295,9 @@ public sealed class NarrationController : ControllerBase
                 new
                 {
                     success = false,
-                    message = ex.Message
+                    code = "AI_TTS_CONFIGURATION_ERROR",
+                    message = "AI/TTS is not configured correctly. Check the AiService configuration."
                 });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new
-            {
-                success = false,
-                message = ex.Message
-            });
         }
         catch (HttpRequestException ex)
         {
@@ -225,8 +312,18 @@ public sealed class NarrationController : ControllerBase
                 new
                 {
                     success = false,
-                    message = "Nhà cung cấp AI/TTS không xử lý được yêu cầu. Kiểm tra log AiService để biết nguyên nhân."
+                    code = "AI_TTS_PROVIDER_ERROR",
+                    message = "The AI/TTS provider could not process the request. Check AiService logs."
                 });
+        }
+        catch (OperationCanceledException) when (
+            cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogInformation(
+                "Narration audio request cancelled for POI {PoiId}.",
+                request.PoiId);
+
+            throw;
         }
         catch (Exception ex)
         {
@@ -240,27 +337,34 @@ public sealed class NarrationController : ControllerBase
                 new
                 {
                     success = false,
-                    message = "Không thể tạo hoặc lưu tệp âm thanh. Kiểm tra log AiService và kết nối MinIO."
+                    code = "AUDIO_GENERATION_ERROR",
+                    message = "Could not generate or store the audio file. Check AiService logs and MinIO connectivity."
                 });
         }
     }
 
     /// <summary>
-    /// Phát tệp MP3 đã lưu trong MinIO.
+    /// Downloads an MP3 audio file stored in MinIO.
     /// </summary>
     [HttpGet("audio/{objectName}")]
     [Produces("audio/mpeg")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAudio(
         string objectName,
         CancellationToken cancellationToken)
     {
-        if (!objectName.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) ||
+        if (string.IsNullOrWhiteSpace(objectName) ||
+            !objectName.EndsWith(
+                ".mp3",
+                StringComparison.OrdinalIgnoreCase) ||
             !Guid.TryParseExact(objectName[..^4], "N", out _))
         {
             return BadRequest(new
             {
                 success = false,
-                message = "Tên tệp âm thanh không hợp lệ."
+                message = "Invalid audio file name."
             });
         }
 
@@ -275,6 +379,11 @@ public sealed class NarrationController : ControllerBase
                 "audio/mpeg",
                 enableRangeProcessing: true);
         }
+        catch (OperationCanceledException) when (
+            cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(
@@ -285,7 +394,7 @@ public sealed class NarrationController : ControllerBase
             return NotFound(new
             {
                 success = false,
-                message = "Không tìm thấy tệp âm thanh."
+                message = "Audio file was not found or could not be downloaded."
             });
         }
     }

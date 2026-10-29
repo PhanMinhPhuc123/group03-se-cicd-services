@@ -1465,3 +1465,307 @@ select:focus-visible {
   overflow-wrap: anywhere;
   color: #52645b;
 }
+
+.detail-panel-vertical {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid #e3e0d5;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.detail-panel-vertical > .detail-content {
+  align-self: auto;
+  width: 100%;
+  min-width: 0;
+  padding: 24px;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
+
+.detail-panel-vertical > .detail-content:first-child {
+  padding-bottom: 8px;
+}
+
+.detail-panel-vertical > .detail-content h3 {
+  margin-top: 8px;
+  margin-bottom: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Ảnh địa điểm nằm dưới tiêu đề, chiếm toàn chiều ngang */
+.detail-panel-vertical > .detail-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding: 0 24px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #fff;
+}
+
+.detail-panel-vertical > .detail-visual > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: 560px;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 12px;
+}
+
+.image-error-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 180px;
+  padding: 20px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: #f1f5f2;
+  color: #647067;
+  text-align: center;
+}
+
+.image-error-message[hidden] {
+  display: none;
+}
+
+/* Các trường thông tin địa điểm */
+.detail-description {
+  margin-bottom: 22px;
+}
+
+.detail-description h4 {
+  margin: 0 0 10px;
+  color: var(--green-dark);
+  font-size: 16px;
+}
+
+.detail-description p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.9;
+}
+
+.detail-panel-vertical .detail-field {
+  min-width: 0;
+  padding: 16px 0;
+  overflow-wrap: anywhere;
+}
+
+.detail-panel-vertical .detail-field span {
+  font-size: 12px;
+}
+
+.detail-panel-vertical .detail-field strong {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* Nút điều hướng ở cuối phần chi tiết */
+.detail-footer {
+  padding: 0 24px 24px;
+}
+
+.detail-footer .detail-button {
+  display: inline-flex;
+  justify-content: center;
+  margin-top: 0;
+}
+
+/* Khung giao diện thuyết minh */
+.audio-guide-panel {
+  width: 100%;
+  min-width: 0;
+  margin: 26px 0 20px;
+  padding: 22px;
+  box-sizing: border-box;
+  border: 1px solid #dce7df;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #f8fbf8, #fff);
+}
+
+.audio-guide-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.audio-guide-heading h4 {
+  margin: 8px 0;
+  color: #183d2b;
+  font-size: 1.2rem;
+}
+
+.audio-guide-heading p {
+  margin: 0;
+  color: #68766d;
+  line-height: 1.6;
+}
+
+.audio-language-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #34483b;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.audio-language-select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #d5e0d8;
+  border-radius: 10px;
+  background: #fff;
+  color: #25392c;
+}
+
+.audio-player-preview {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.audio-play-button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: #17643a;
+  color: #fff;
+  font-size: 18px;
+}
+
+.audio-track-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.audio-track-info strong {
+  color: #25392c;
+}
+
+.audio-track-info span {
+  color: #77837a;
+  font-size: 0.85rem;
+}
+
+.audio-progress-track {
+  height: 6px;
+  margin-top: 20px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #dfe7e1;
+}
+
+.audio-progress-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: #25804b;
+}
+
+.audio-player-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  color: #718075;
+  font-size: 0.82rem;
+}
+
+.audio-player-meta label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.audio-player-meta select {
+  padding: 5px 8px;
+  border: 1px solid #d5e0d8;
+  border-radius: 8px;
+  background: #fff;
+  color: #25392c;
+}
+
+.audio-guide-notice {
+  margin: 16px 0 0;
+  color: #77837a;
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* Responsive: máy tính bảng và điện thoại */
+@media (max-width: 640px) {
+  .detail-panel-vertical > .detail-content {
+    padding: 16px;
+  }
+
+  .detail-panel-vertical > .detail-content:first-child {
+    padding-bottom: 8px;
+  }
+
+  .detail-panel-vertical > .detail-visual {
+    padding: 0 16px;
+  }
+
+  .detail-panel-vertical > .detail-visual > img {
+    width: 100%;
+    height: auto;
+    max-height: 360px;
+    object-fit: contain;
+  }
+
+  .detail-panel-vertical .detail-content h3 {
+    font-size: 1.25rem;
+    line-height: 1.4;
+  }
+
+  .detail-panel-vertical .detail-content p {
+    font-size: 0.92rem;
+    line-height: 1.7;
+  }
+
+  .detail-footer {
+    padding: 0 16px 16px;
+  }
+
+  .detail-footer .detail-button {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .audio-guide-panel {
+    margin: 16px 0;
+    padding: 14px;
+  }
+
+  .audio-guide-heading h4 {
+    font-size: 1.05rem;
+  }
+}
