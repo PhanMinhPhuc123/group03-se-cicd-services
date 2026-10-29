@@ -27,3 +27,8 @@ Thumbs.db
 CNPM-N03/
 group03-se-cicd-services/
 node_modules/
+group03-se-cicd-services-feature-poi-visit-sessions/
+
+# .NET build output
+**/bin/
+**/obj/

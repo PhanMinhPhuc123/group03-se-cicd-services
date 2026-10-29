@@ -183,17 +183,67 @@ function readField(item, keys) {
 }
 
 // Chuẩn hóa dữ liệu API để giao diện không phụ thuộc một tên thuộc tính duy nhất.
+const POI_IMAGES = {
+  1: 'Dinh Độc Lập.jpg',
+  2: 'Bảo tàng Chứng tích Chiến tranh.png',
+  3: 'Bưu điện Trung tâm Sài Gòn.webp',
+  4: 'Nhà thờ Đức Bà.jpg',
+  5: 'Chợ Bến Thành.jpg',
+  6: 'Phố đi bộ Nguyễn Huệ.webp',
+  7: 'Bến Bạch Đằng.jpeg',
+  8: 'Nhà hát Thành Phố.jpg',
+  9: 'Bảo tàng TP Hồ Chí Minh.jpg',
+  10: 'Chùa Bà Thiên Hậu.webp',
+  11: 'Chợ Bình Tây.webp',
+  12: 'Công viên Tao Đàn.jpg',
+  13: 'Thảo Cầm Viên Sài Gòn.jpg',
+  14: 'Landmark 81.jpg',
+  15: 'Địa đạo Củ Chi.webp',
+}
+
+function getPoiImage(id) {
+  const filename = POI_IMAGES[String(id)]
+  return filename ? `/images/${encodeURIComponent(filename)}` : ''
+}
 function normalizePlace(item, index) {
+  const readNumber = (keys) => {
+    const value = readField(item, keys)
+    if (value === '') return null
+
+    const number = Number(value)
+    return Number.isFinite(number) ? number : null
+  }
+
+  const id =
+    readField(item, ['id', 'poiId', 'POIId', 'maPOI', 'maDiaDiem']) ||
+    String(index + 1)
+
+  const name =
+    readField(item, [
+      'name', 'poiName', 'POIName', 'tenPOI', 'tenDiaDiem', 'title',
+    ]) || `Địa điểm ${index + 1}`
+
+  const apiImage = readField(item, [
+    'imageUrl', 'image', 'photoUrl', 'thumbnailUrl', 'hinhAnh',
+  ])
+
   return {
-    id: readField(item, ['id', 'poiId', 'POIId', 'maPOI', 'maDiaDiem']) || String(index + 1),
-    name: readField(item, ['name', 'poiName', 'POIName', 'tenPOI', 'tenDiaDiem', 'title']) || `Địa điểm ${index + 1}`,
-    category: readField(item, ['category', 'categoryName', 'type', 'poiType', 'loaiDiaDiem', 'tenLoai']) || '',
-    description: readField(item, ['description', 'shortDescription', 'content', 'moTa', 'gioiThieu']) || '',
-    address: readField(item, ['address', 'location', 'diaChi', 'viTri']) || '',
-    image: readField(item, ['imageUrl', 'image', 'photoUrl', 'thumbnailUrl', 'hinhAnh']) || '',
+    id,
+    name,
+    category: readField(item, [
+      'category', 'categoryName', 'type', 'poiType', 'loaiDiaDiem', 'tenLoai',
+    ]),
+    description: readField(item, [
+      'description', 'shortDescription', 'content', 'moTa', 'gioiThieu',
+    ]),
+    address: readField(item, ['address', 'location', 'diaChi', 'viTri']),
+    image: apiImage || getPoiImage(id),
+    lat: readNumber(['latitude', 'lat', 'viDo', 'vĩ độ']),
+    lng: readNumber(['longitude', 'lng', 'lon', 'kinhDo', 'kinh độ']),
     raw: item,
   }
 }
+
 
 // API có thể trả về mảng trực tiếp hoặc đặt mảng trong một thuộc tính.
 function extractPlaces(data) {
@@ -212,6 +262,40 @@ function extractPlaces(data) {
   return []
 }
 
+
+function getDistanceKm(from, to) {
+  if (
+    !from ||
+    !to ||
+    !Number.isFinite(from.lat) ||
+    !Number.isFinite(from.lng) ||
+    !Number.isFinite(to.lat) ||
+    !Number.isFinite(to.lng)
+  ) {
+    return null
+  }
+
+  const toRadians = (degrees) => (degrees * Math.PI) / 180
+  const earthRadiusKm = 6371
+
+  const dLat = toRadians(to.lat - from.lat)
+  const dLng = toRadians(to.lng - from.lng)
+  const lat1 = toRadians(from.lat)
+  const lat2 = toRadians(to.lat)
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function formatDistance(distanceKm) {
+  if (distanceKm == null) return 'Chưa có tọa độ'
+  if (distanceKm < 1) return `${Math.round(distanceKm * 1000)} m`
+  return `${distanceKm.toFixed(1)} km`
+}
+
 function TourismHome() {
   const [language, setLanguage] = useState('vi')
   const [places, setPlaces] = useState([])
@@ -219,6 +303,9 @@ function TourismHome() {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [selectedPlace, setSelectedPlace] = useState(null)
+  // Trạng thái giao diện thuyết minh audio (chưa kết nối AiService).
+const [audioLanguage, setAudioLanguage] = useState('vi')
+const [audioSpeed, setAudioSpeed] = useState('1')
   const [showAccess, setShowAccess] = useState(false)
   const [userPosition, setUserPosition] = useState(null)
   const [locationMessage, setLocationMessage] = useState('')
@@ -255,8 +342,10 @@ function TourismHome() {
         if (poiFromUrl) {
           return normalized.find((place) => String(place.id) === String(poiFromUrl)) || normalized[0]
         }
-        if (current) return normalized.find((place) => place.id === current.id) || normalized[0]
-        return normalized[0]
+        if (current) {
+  return normalized.find((place) => place.id === current.id) || null
+}
+return null
       })
     } catch (err) {
       console.error('Lỗi tải danh sách POI:', err)
@@ -320,17 +409,47 @@ useEffect(() => {
     clearInterval(heartbeatTimer)
   }
 }, [sessionId])
-  const filteredPlaces = useMemo(() => {
-    const keyword = search.trim().toLocaleLowerCase()
 
-    if (!keyword) return places
+const SEARCH_RADIUS_KM = 4
 
-    return places.filter((place) =>
-      `${place.name} ${place.category} ${place.description} ${place.address}`
+// Danh sách chính: luôn giữ đủ các địa điểm từ API.
+// Tìm kiếm chỉ lọc theo từ khóa, không phụ thuộc GPS.
+const filteredPlaces = useMemo(() => {
+  const keyword = search.trim().toLocaleLowerCase()
+
+  return places
+    .map((place) => ({
+      ...place,
+      distanceKm: userPosition
+        ? getDistanceKm(userPosition, place)
+        : null,
+    }))
+    .filter((place) => {
+      if (!keyword) return true
+
+      return `${place.name} ${place.category} ${place.description} ${place.address}`
         .toLocaleLowerCase()
-        .includes(keyword),
+        .includes(keyword)
+    })
+}, [places, search, userPosition])
+
+// Danh sách gần bạn: chỉ gồm các địa điểm trong bán kính 4 km.
+const nearbyPlaces = useMemo(() => {
+  if (!userPosition) return []
+
+  return places
+    .map((place) => ({
+      ...place,
+      distanceKm: getDistanceKm(userPosition, place),
+    }))
+    .filter(
+      (place) =>
+        place.distanceKm !== null &&
+        place.distanceKm <= SEARCH_RADIUS_KM,
     )
-  }, [places, search])
+    .sort((a, b) => a.distanceKm - b.distanceKm)
+}, [places, userPosition])
+
 
   function selectPlace(place) {
     setSelectedPlace(place)
@@ -650,6 +769,83 @@ useEffect(() => {
             {userPosition && selectedPlace?.address && <a className="map-direction-link" href={`https://www.google.com/maps/dir/?api=1&origin=${userPosition.lat},${userPosition.lng}&destination=${encodeURIComponent(selectedPlace.address)}&travelmode=walking`} target="_blank" rel="noreferrer">Chỉ đường từ vị trí hiện tại đến địa điểm đã chọn</a>}
           </div>
         </section>
+        {userPosition && (
+  <section className="section nearby-section" id="nearby">
+    <div className="container">
+      <div className="section-heading">
+        <div>
+          <div className="section-kicker">GPS · BÁN KÍNH 4 KM</div>
+          <h2>Địa điểm gần bạn</h2>
+          <p className="section-description">
+            Các điểm tham quan được sắp xếp theo khoảng cách từ vị trí hiện tại.
+          </p>
+        </div>
+
+        <div className="place-count">
+          <span className="count-number">{nearbyPlaces.length}</span>
+          <span>địa điểm gần bạn</span>
+        </div>
+      </div>
+
+      {nearbyPlaces.length === 0 ? (
+        <div className="empty-state">
+          Chưa có điểm tham quan nào trong bán kính 4 km.
+          Bà vẫn có thể xem đầy đủ 15 điểm ở danh sách bên dưới.
+        </div>
+      ) : (
+        <div className="places-grid">
+          {nearbyPlaces.map((place, index) => (
+            <article className="place-card" key={place.id}>
+              <div className="place-card-visual">
+                {place.image ? (
+                  <img
+                    src={place.image}
+                    alt={place.name}
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none'
+                      const message =
+                        event.currentTarget.parentElement?.querySelector(
+                          '.image-error-message',
+                        )
+                      if (message) message.hidden = false
+                    }}
+                  />
+                ) : null}
+
+                <div
+                  className="image-error-message"
+                  hidden={Boolean(place.image)}
+                >
+                  Không tải được ảnh địa điểm
+                </div>
+
+                <span className="place-index">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+              </div>
+
+              <div className="place-card-body">
+                <div className="place-category">
+                  CÁCH BẠN {formatDistance(place.distanceKm)}
+                </div>
+                <h3>{place.name}</h3>
+                <p>{place.description || t.noDescription}</p>
+
+                <button
+                  className="text-link"
+                  onClick={() => selectPlace(place)}
+                >
+                  {t.detail} <span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  </section>
+)}
 
         <section className="section places-section" id="places">
           <div className="container">
@@ -660,7 +856,7 @@ useEffect(() => {
                 <p className="section-description">{t.placesDesc}</p>
               </div>
               <div className="place-count">
-                <span className="count-number">{places.length}</span>
+                <span className="count-number">{filteredPlaces.length}</span>
                 <span>{t.total}</span>
               </div>
             </div>
@@ -711,8 +907,10 @@ useEffect(() => {
             )}
 
             {!loading && !error && filteredPlaces.length === 0 && (
-              <div className="empty-state">{t.empty}</div>
-            )}
+  <div className="empty-state">
+    {t.empty}
+  </div>
+)}
 
             {!loading && !error && filteredPlaces.length > 0 && (
               <div className="places-grid">
@@ -723,21 +921,24 @@ useEffect(() => {
                   >
                     <div className="place-card-visual">
                       {place.image ? (
-                        <img
-                          src={place.image}
-                          alt={place.name}
-                          loading="lazy"
-                          onError={(event) => {
-                            event.currentTarget.style.display = 'none'
-                          }}
-                        />
-                      ) : (
-                        <div className="place-art">
-                          <span className="place-art-number">{String(index + 1).padStart(2, '0')}</span>
-                          <span className="place-art-title">{place.name}</span>
-                          <span className="place-art-caption">THUYẾT MINH ĐA NGÔN NGỮ</span>
-                        </div>
-                      )}
+  <img
+    src={place.image}
+    alt={place.name}
+    loading="lazy"
+    onError={(event) => {
+      event.currentTarget.style.display = 'none'
+      const message = event.currentTarget.nextElementSibling
+      if (message) message.style.display = 'flex'
+    }}
+  />
+) : null}
+
+<div
+  className="place-image-error"
+  style={{ display: place.image ? 'none' : 'flex' }}
+>
+  Không tải được hình ảnh
+</div>
                       <span className="place-index">{String(index + 1).padStart(2, '0')}</span>
                     </div>
                     <div className="place-card-body">
@@ -778,47 +979,157 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="detail-panel">
-              <div className="detail-visual">
-                {selectedPlace?.image ? (
-                  <img src={selectedPlace.image} alt={selectedPlace.name} />
-                ) : (
-                  <div className="detail-art">
-                    <span className="detail-art-overline">{t.selected}</span>
-                    <span className="detail-art-title">{selectedPlace?.name || t.detailTitle}</span>
-                    <span className="detail-art-bottom">THUYẾT MINH ĐA NGÔN NGỮ</span>
-                  </div>
-                )}
-              </div>
-              <div className="detail-content">
-                <div className="section-kicker">{t.detailTitle}</div>
-                <h3>{selectedPlace?.name || t.choose}</h3>
-                {selectedPlace ? (
-                  <>
-                    <p>{selectedPlace.description || t.noDescription}</p>
-                    {selectedPlace.address && (
-                      <div className="detail-field">
-                        <span>{t.category}</span>
-                        <strong>{selectedPlace.address}</strong>
-                      </div>
-                    )}
-                    <div className="detail-field">
-                      <span>{t.id}</span>
-                      <strong>{selectedPlace.id}</strong>
-                    </div>
-                    {selectedPlace.category && (
-                      <div className="detail-field">
-                        <span>{t.category}</span>
-                        <strong>{selectedPlace.category}</strong>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <p>{t.choose}</p>
-                )}
-                <a className="button button-primary detail-button" href="#places">{t.placesTitle}</a>
-              </div>
+           
+<div className="detail-panel detail-panel-vertical">
+  <div className="detail-content">
+    <div className="section-kicker">{t.detailTitle}</div>
+    <h3>{selectedPlace?.name || t.choose}</h3>
+  </div>
+
+  {selectedPlace ? (
+    <>
+      <div className="detail-visual">
+        {selectedPlace.image ? (
+          <>
+            <img
+              src={selectedPlace.image}
+              alt={selectedPlace.name}
+              onError={(event) => {
+                event.currentTarget.style.display = 'none'
+                const message =
+                  event.currentTarget.parentElement?.querySelector(
+                    '.image-error-message',
+                  )
+                if (message) message.hidden = false
+              }}
+            />
+            <div className="image-error-message" hidden>
+              Không tải được ảnh địa điểm
             </div>
+          </>
+        ) : (
+          <div className="image-error-message">
+            Chưa có ảnh địa điểm
+          </div>
+        )}
+      </div>
+
+      <div className="detail-content">
+        <div className="detail-description">
+          <h4>Mô tả</h4>
+          <p>{selectedPlace.description || t.noDescription}</p>
+        </div>
+
+        <div className="detail-field">
+          <span>Địa chỉ</span>
+          <strong>
+            {selectedPlace.address || 'Chưa có địa chỉ trong dữ liệu địa điểm'}
+          </strong>
+        </div>
+
+        <div className="detail-field">
+          <span>{t.id}</span>
+          <strong>{selectedPlace.id}</strong>
+        </div>
+
+        <div className="detail-field">
+          <span>Khoảng cách từ bạn</span>
+          <strong>
+            {formatDistance(
+              userPosition
+                ? getDistanceKm(userPosition, selectedPlace)
+                : null
+            )}
+          </strong>
+        </div>
+
+        <div className="audio-guide-panel">
+          <div className="audio-guide-heading">
+            <div>
+              <span className="section-kicker">AUDIO GUIDE</span>
+              <h4>Thuyết minh địa điểm</h4>
+              <p>Chọn ngôn ngữ để nghe giới thiệu về địa điểm.</p>
+            </div>
+          </div>
+
+          <label className="audio-language-label" htmlFor="audio-language">
+            Ngôn ngữ thuyết minh
+          </label>
+          <select
+            id="audio-language"
+            className="audio-language-select"
+            value={audioLanguage}
+            onChange={(event) => setAudioLanguage(event.target.value)}
+          >
+            <option value="vi">🇻🇳 Tiếng Việt</option>
+            <option value="en">🇬🇧 English</option>
+            <option value="zh">🇨🇳 中文</option>
+          </select>
+
+          <div className="audio-player-preview">
+            <button
+              className="audio-play-button"
+              type="button"
+              disabled
+              aria-label="Audio chưa sẵn sàng"
+              title="Chưa có file âm thanh"
+            >
+              ▶
+            </button>
+
+            <div className="audio-track-info">
+              <strong>
+                {audioLanguage === 'vi'
+                  ? 'Thuyết minh tiếng Việt'
+                  : audioLanguage === 'en'
+                    ? 'English audio guide'
+                    : '中文景点讲解'}
+              </strong>
+              <span>Chưa có nội dung âm thanh</span>
+            </div>
+          </div>
+
+          <div className="audio-progress-track">
+            <div className="audio-progress-fill" />
+          </div>
+
+          <div className="audio-player-meta">
+            <span>00:00</span>
+            <span>--:--</span>
+            <label>
+              Tốc độ
+              <select
+                value={audioSpeed}
+                onChange={(event) => setAudioSpeed(event.target.value)}
+                aria-label="Tốc độ phát"
+              >
+                <option value="0.75">0.75×</option>
+                <option value="1">1×</option>
+                <option value="1.25">1.25×</option>
+                <option value="1.5">1.5×</option>
+              </select>
+            </label>
+          </div>
+
+          <p className="audio-guide-notice">
+            Nội dung thuyết minh sẽ khả dụng sau khi tích hợp dịch vụ âm thanh.
+          </p>
+        </div>
+      </div>
+    </>
+  ) : (
+    <div className="detail-empty">
+      {t.choose}
+    </div>
+  )}
+
+  <div className="detail-footer">
+    <a className="button button-primary detail-button" href="#places">
+      {t.placesTitle}
+    </a>
+  </div>
+</div>
+
           </div>
         </section>
 
