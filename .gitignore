@@ -26,3 +26,13 @@ Thumbs.db
 # Old repositories / local copies
 CNPM-N03/
 group03-se-cicd-services/
+
+# Local database backups
+database/*.dump
+database/*backup*.sql
+*.bak
+
+# Local secrets
+.env
+.env.*
+!.env.example
