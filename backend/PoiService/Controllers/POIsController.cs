@@ -100,6 +100,13 @@ public class POIsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<POI>> CreatePOI([FromBody] POI poi)
     {
+        var errors = ValidatePOI(poi);
+        if (errors.Count > 0)
+            return BadRequest(new { errors });
+
+        poi.Name = poi.Name.Trim();
+        poi.Address = poi.Address.Trim();
+
         poi.PoiId = Guid.NewGuid();
         poi.NameSearch = NormalizeSearch(poi.Name);
         poi.AddressSearch = NormalizeSearch(poi.Address);
@@ -120,7 +127,15 @@ public class POIsController : ControllerBase
     public async Task<IActionResult> UpdatePOI(Guid id, [FromBody] POI input)
     {
         var poi = await _context.POIs.FindAsync(id);
-        if (poi is null) return NotFound();
+        if (poi is null)
+            return NotFound();
+
+        var errors = ValidatePOI(input);
+        if (errors.Count > 0)
+            return BadRequest(new { errors });
+
+        input.Name = input.Name.Trim();
+        input.Address = input.Address.Trim();
 
         poi.Name = input.Name;
         poi.NameSearch = NormalizeSearch(input.Name);
@@ -150,6 +165,34 @@ public class POIsController : ControllerBase
 
         await _context.SaveChangesAsync();
         return NoContent();
+    }
+
+    private static List<string> ValidatePOI(POI poi)
+    {
+        var errors = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(poi.Name))
+            errors.Add("Tên địa điểm không được để trống.");
+        else if (poi.Name.Trim().Length > 255)
+            errors.Add("Tên địa điểm không được vượt quá 255 ký tự.");
+
+        if (string.IsNullOrWhiteSpace(poi.Address))
+            errors.Add("Địa chỉ không được để trống.");
+        else if (poi.Address.Trim().Length > 500)
+            errors.Add("Địa chỉ không được vượt quá 500 ký tự.");
+
+        if (poi.Latitude.HasValue != poi.Longitude.HasValue)
+            errors.Add("Vĩ độ và kinh độ phải được cung cấp đồng thời.");
+
+        if (poi.Latitude.HasValue &&
+            (poi.Latitude.Value < -90 || poi.Latitude.Value > 90))
+            errors.Add("Vĩ độ phải nằm trong khoảng từ -90 đến 90.");
+
+        if (poi.Longitude.HasValue &&
+            (poi.Longitude.Value < -180 || poi.Longitude.Value > 180))
+            errors.Add("Kinh độ phải nằm trong khoảng từ -180 đến 180.");
+
+        return errors;
     }
 
     private Guid? GetAdminId()
