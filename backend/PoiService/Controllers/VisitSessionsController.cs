@@ -130,36 +130,36 @@ public class VisitSessionsController : ControllerBase
         });
     }
 
- [HttpGet("{id:guid}")]
-public async Task<IActionResult> GetSession(Guid id)
-{
-    var session = await _context.VisitSessions
-        .AsNoTracking()
-        .FirstOrDefaultAsync(s => s.SessionId == id);
-
-    if (session is null)
-        return NotFound("Không tìm thấy phiên tham quan.");
-
-    return Ok(new
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetSession(Guid id)
     {
-        sessionId = session.SessionId,
-        startedAt = session.StartedAt,
-        lastActiveAt = session.LastActiveAt,
-        endedAt = session.EndedAt,
-        deviceName = session.DeviceName,
-        userAgent = session.UserAgent,
+        var session = await _context.VisitSessions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SessionId == id);
 
-        // Chuyển IPAddress thành string để JSON serialize an toàn
-        ipAddress = session.IpAddress?.ToString(),
+        if (session is null)
+            return NotFound("Không tìm thấy phiên tham quan.");
 
-        uiLanguageCode = session.UiLanguageCode,
-        gpsStatus = session.GpsStatus,
-        latitude = session.Latitude,
-        longitude = session.Longitude,
-        gpsConsentAt = session.GpsConsentAt,
-        gpsUpdatedAt = session.GpsUpdatedAt
-    });
-}
+        return Ok(new
+        {
+            sessionId = session.SessionId,
+            startedAt = session.StartedAt,
+            lastActiveAt = session.LastActiveAt,
+            endedAt = session.EndedAt,
+            deviceName = session.DeviceName,
+            userAgent = session.UserAgent,
+
+            // Chuyển IPAddress thành string để JSON serialize an toàn
+            ipAddress = session.IpAddress?.ToString(),
+
+            uiLanguageCode = session.UiLanguageCode,
+            gpsStatus = session.GpsStatus,
+            latitude = session.Latitude,
+            longitude = session.Longitude,
+            gpsConsentAt = session.GpsConsentAt,
+            gpsUpdatedAt = session.GpsUpdatedAt
+        });
+    }
 
     [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
     [HttpGet("stats")]

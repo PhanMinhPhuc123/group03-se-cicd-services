@@ -15,18 +15,24 @@ public class TourPOIsController : ControllerBase
 
     public TourPOIsController(PoiDbContext context) => _context = context;
 
+
     [AllowAnonymous]
     [HttpGet("{tourId:guid}")]
     public async Task<IActionResult> GetTourPOIs(Guid tourId)
     {
-        var tourVisible = await _context.Tours.AsNoTracking()
-            .AnyAsync(t => t.TourId == tourId && t.IsVisible);
+        var isAdmin = User.IsInRole("Admin");
 
-        if (!tourVisible && !User.IsInRole("Admin"))
+        var tourExists = await _context.Tours.AsNoTracking()
+            .AnyAsync(t => t.TourId == tourId &&
+                           (isAdmin || t.IsVisible));
+
+        if (!tourExists)
             return NotFound();
 
         var items = await _context.TourPOIs.AsNoTracking()
-            .Where(tp => tp.TourId == tourId)
+            .Where(tp => tp.TourId == tourId &&
+                         (isAdmin || _context.POIs.Any(p =>
+                             p.PoiId == tp.PoiId && p.IsVisible)))
             .OrderBy(tp => tp.DisplayOrder)
             .ToListAsync();
 
@@ -37,13 +43,25 @@ public class TourPOIsController : ControllerBase
     [HttpGet("{tourId:guid}/{poiId:guid}")]
     public async Task<IActionResult> GetTourPOI(Guid tourId, Guid poiId)
     {
+        var isAdmin = User.IsInRole("Admin");
+
+        var tourExists = await _context.Tours.AsNoTracking()
+            .AnyAsync(t => t.TourId == tourId &&
+                           (isAdmin || t.IsVisible));
+
+        if (!tourExists)
+            return NotFound();
+
         var item = await _context.TourPOIs.AsNoTracking()
             .FirstOrDefaultAsync(tp =>
-                tp.TourId == tourId && tp.PoiId == poiId);
+                tp.TourId == tourId &&
+                tp.PoiId == poiId &&
+                (isAdmin || _context.POIs.Any(p =>
+                    p.PoiId == tp.PoiId && p.IsVisible)));
 
-        if (item is null) return NotFound();
-        return Ok(item);
+        return item is null ? NotFound() : Ok(item);
     }
+
 
     [Authorize(Roles = "Admin")]
     [HttpPost]
