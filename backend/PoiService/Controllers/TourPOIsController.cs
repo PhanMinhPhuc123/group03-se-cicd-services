@@ -67,6 +67,9 @@ public class TourPOIsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> AddPOIToTour([FromBody] TourPOI item)
     {
+        if (item.DisplayOrder < 0)
+            return BadRequest("Thứ tự POI không được là số âm.");
+
         var tourExists = await _context.Tours
             .AnyAsync(t => t.TourId == item.TourId);
 
@@ -95,6 +98,9 @@ public class TourPOIsController : ControllerBase
     public async Task<IActionResult> UpdateTourPOI(
         Guid tourId, Guid poiId, [FromBody] UpdateTourPOIRequest request)
     {
+        if (request.DisplayOrder < 0)
+            return BadRequest("Thứ tự POI không được là số âm.");
+
         var item = await _context.TourPOIs.FirstOrDefaultAsync(tp =>
             tp.TourId == tourId && tp.PoiId == poiId);
 

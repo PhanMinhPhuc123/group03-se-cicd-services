@@ -59,10 +59,17 @@ public class ToursController : ControllerBase
         var tour = await query.FirstOrDefaultAsync();
         if (tour is null) return NotFound("Không tìm thấy tour.");
 
+        var isAdmin = User.IsInRole("Admin");
+
+        var poiQuery = _context.POIs.AsNoTracking();
+
+        if (!isAdmin)
+            poiQuery = poiQuery.Where(p => p.IsVisible);
+
         var pois = await _context.TourPOIs.AsNoTracking()
-            .Where(tp => tp.TourId == id)
-            .Join(
-                _context.POIs.AsNoTracking().Where(p => p.IsVisible),
+    .Where(tp => tp.TourId == id)
+    .Join(
+        poiQuery,
                 tp => tp.PoiId,
                 poi => poi.PoiId,
                 (tp, poi) => new
@@ -92,6 +99,14 @@ public class ToursController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateTour([FromBody] Tour tour)
     {
+        if (string.IsNullOrWhiteSpace(tour.Name))
+            return BadRequest("Tên tour không được để trống.");
+
+        tour.Name = tour.Name.Trim();
+
+        if (tour.Name.Length > 255)
+            return BadRequest("Tên tour không được vượt quá 255 ký tự.");
+
         tour.TourId = Guid.NewGuid();
         tour.IsVisible = true;
         tour.CreatedAt = DateTime.UtcNow;
@@ -111,6 +126,14 @@ public class ToursController : ControllerBase
     {
         var tour = await _context.Tours.FindAsync(id);
         if (tour is null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(input.Name))
+            return BadRequest("Tên tour không được để trống.");
+
+        input.Name = input.Name.Trim();
+
+        if (input.Name.Length > 255)
+            return BadRequest("Tên tour không được vượt quá 255 ký tự.");
 
         tour.Name = input.Name;
         tour.Description = input.Description;
