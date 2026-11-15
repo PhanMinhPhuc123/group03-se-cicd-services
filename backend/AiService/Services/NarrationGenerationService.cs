@@ -128,15 +128,18 @@ public sealed class NarrationGenerationService
             "You are a professional multilingual tour guide. " +
             $"The required output language is {targetLanguage}. " +
             $"{languageRules} " +
-            "Create a detailed, natural spoken narration for a visitor exploring this place. " +
-            "Use 5 to 7 complete, well-developed sentences, aiming for around 100 to 150 words when the source contains enough information. " +
-            "Preserve the important historical, architectural, cultural, and visitor information present in the source description. " +
-            "Explain the supplied information naturally instead of reducing it to a brief summary. " +
+            "Create a natural spoken narration for a visitor exploring this place. " +
+            "Prioritize factual accuracy and faithfully preserve the information in the source. " +
+            "Aim for 5 to 7 complete sentences when the source contains enough distinct information. " +
+            "For shorter sources, use fewer sentences rather than repeating ideas or inventing details. " +
+            "Preserve the important historical, architectural, cultural, and visitor information present in the source. " +
+            "You may reorganize related facts into natural sentences, but must not add unsupported details. " +
             "Do not invent facts, dates, historical events, attractions, opening hours, or opinions. " +
-            "Use the place name as context and do not invent additional facts from the location. " +
+            "Use the place name as context and do not infer additional facts from the location. " +
             "Write in a clear, warm style suitable for listening to an audio tour. " +
             "Use only the requested language and do not mix languages. " +
             "Return only the narration text, without a title, numbered list, or explanation.";
+
 
         // 5. User prompt: provide the POI context and source description.
         var userPrompt = languageCode == "zh"
@@ -144,17 +147,19 @@ public sealed class NarrationGenerationService
             $"景点名称：{name}\n" +
             $"地点：{location}\n\n" +
             "请将下面的越南语资料改写为适合游客聆听的简体中文导览词。" +
-            "请使用5到7个完整的句子，保留原文中的历史、建筑和文化信息。" +
+            "在原文信息足够时，使用5到7个完整句子。" +
+            "如果原文信息较少，可以使用较少的句子，不得重复内容或编造事实。" +
+            "保留原文中的历史、建筑和文化信息。" +
             "只使用自然、流畅的简体中文，不要输出越南语、英语、日文假名或韩文。" +
-            "不得编造历史事实、日期或其他原文没有的信息。" +
             "只输出导览正文，不要添加标题、编号或解释。\n\n" +
             $"越南语原文：\n{description}"
             : $"Target language: {targetLanguage}\n" +
             $"Place name: {name}\n" +
             $"Location: {location}\n\n" +
-            "Create a detailed spoken tour narration based only on the source description below. " +
-            "Retain its important details and explain them in natural, complete sentences. " +
-            "Do not reduce the content to one or two sentences or add unsupported information. " +
+            "Create a natural spoken tour narration based only on the source description below. " +
+            "Aim for 5 to 7 complete sentences when the source contains enough distinct information. " +
+            "For shorter sources, use fewer sentences rather than repeating ideas or inventing details. " +
+            "Preserve all important facts and do not add unsupported information. " +
             "Return only the narration text.\n\n" +
             $"Source description:\n{description}";
 
@@ -210,9 +215,9 @@ public sealed class NarrationGenerationService
                 ? systemPrompt
                 : systemPrompt + "\n\nIMPORTANT CORRECTION: " +
                 retryInstruction +
-                " Keep the narration detailed, with 5 to 7 complete sentences when supported by the source. " +
-                "Do not shorten it to one or two sentences. " +
-                "Do not invent facts or change the source meaning. " +
+                " Prioritize factual accuracy and preserve the source meaning. " +
+                "Use 5 to 7 complete sentences only when supported by the source. " +
+                "For shorter sources, use fewer sentences rather than repeating or inventing information. " +
                 "Return only the corrected narration.";
 
             using var request = new HttpRequestMessage(
