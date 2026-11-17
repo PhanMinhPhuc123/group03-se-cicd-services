@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Diagnostics;
+using System.Globalization;
 using AiService.Contracts;
 using AiService.Data;
 using AiService.Models;
@@ -113,7 +115,44 @@ public sealed class NarrationController : ControllerBase
                 message = "Ngôn ngữ không tồn tại hoặc đang bị tắt."
             });
         }
+        // Tạo và lưu request trước khi gọi các dịch vụ phụ thuộc.
+        var narrationRequest = new NarrationRequest
+        {
+            PoiId = request.PoiId,
+            SessionId = request.SessionId,
+            LanguageCode = language.LanguageCode,
+            IdempotencyKey = idempotencyKey,
+            Status = NarrationRequestStatuses.Pending,
+            RequestedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
 
+        _db.NarrationRequests.Add(narrationRequest);
+
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Có thể một request khác vừa lưu cùng key.
+            _db.Entry(narrationRequest).State = EntityState.Detached;
+
+            var concurrentRequest = await FindRequestByKeyAsync(
+                idempotencyKey,
+                cancellationToken);
+
+            if (concurrentRequest is not null)
+            {
+                return HandleExistingRequest(
+                    concurrentRequest,
+                    request);
+            }
+
+            throw;
+        }
+
+        // Chỉ gọi PoiService sau khi request đã được lưu thành công.
         PoiApiResponse? poi;
 
         try
@@ -125,22 +164,31 @@ public sealed class NarrationController : ControllerBase
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
         {
-            // Client chủ động hủy request: giữ nguyên hành vi hủy.
+            await MarkRequestFailedAsync(
+                narrationRequest,
+                "REQUEST_CANCELLED",
+                "The request was cancelled.");
+
             throw;
         }
         catch (OperationCanceledException ex)
         {
-            // HttpClient hết thời gian chờ khi gọi PoiService.
             _logger.LogWarning(
                 ex,
                 "PoiService request timed out for POI {PoiId}.",
                 request.PoiId);
+
+            await MarkRequestFailedAsync(
+                narrationRequest,
+                "POI_SERVICE_TIMEOUT",
+                "PoiService phản hồi quá thời gian chờ.");
 
             return StatusCode(
                 StatusCodes.Status504GatewayTimeout,
                 new
                 {
                     success = false,
+                    requestId = narrationRequest.RequestId,
                     code = "POI_SERVICE_TIMEOUT",
                     message = "PoiService phản hồi quá thời gian chờ."
                 });
@@ -154,21 +202,33 @@ public sealed class NarrationController : ControllerBase
 
             if (ex.StatusCode.HasValue)
             {
+                await MarkRequestFailedAsync(
+                    narrationRequest,
+                    "POI_SERVICE_ERROR",
+                    "PoiService trả về lỗi khi lấy thông tin địa điểm.");
+
                 return StatusCode(
                     StatusCodes.Status502BadGateway,
                     new
                     {
                         success = false,
+                        requestId = narrationRequest.RequestId,
                         code = "POI_SERVICE_ERROR",
                         message = "PoiService trả về lỗi khi lấy thông tin địa điểm."
                     });
             }
+
+            await MarkRequestFailedAsync(
+                narrationRequest,
+                "POI_SERVICE_UNAVAILABLE",
+                "Không thể kết nối đến PoiService.");
 
             return StatusCode(
                 StatusCodes.Status503ServiceUnavailable,
                 new
                 {
                     success = false,
+                    requestId = narrationRequest.RequestId,
                     code = "POI_SERVICE_UNAVAILABLE",
                     message = "Không thể kết nối đến PoiService."
                 });
@@ -180,25 +240,60 @@ public sealed class NarrationController : ControllerBase
                 "PoiService returned an invalid response for POI {PoiId}.",
                 request.PoiId);
 
+            await MarkRequestFailedAsync(
+                narrationRequest,
+                "POI_SERVICE_ERROR",
+                "Dữ liệu phản hồi từ PoiService không hợp lệ.");
+
             return StatusCode(
                 StatusCodes.Status502BadGateway,
                 new
                 {
                     success = false,
+                    requestId = narrationRequest.RequestId,
                     code = "POI_SERVICE_ERROR",
                     message = "Dữ liệu phản hồi từ PoiService không hợp lệ."
+                });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Unexpected PoiService error for POI {PoiId}.",
+                request.PoiId);
+
+            await MarkRequestFailedAsync(
+                narrationRequest,
+                "POI_SERVICE_ERROR",
+                ex.Message);
+
+            return StatusCode(
+                StatusCodes.Status502BadGateway,
+                new
+                {
+                    success = false,
+                    requestId = narrationRequest.RequestId,
+                    code = "POI_SERVICE_ERROR",
+                    message = "Có lỗi xảy ra khi lấy thông tin địa điểm."
                 });
         }
 
         if (poi is null)
         {
+            await MarkRequestFailedAsync(
+                narrationRequest,
+                "POI_NOT_FOUND",
+                "Không tìm thấy địa điểm hoặc địa điểm đang ẩn.");
+
             return NotFound(new
             {
                 success = false,
+                requestId = narrationRequest.RequestId,
                 code = "POI_NOT_FOUND",
                 message = "Không tìm thấy địa điểm hoặc địa điểm đang ẩn."
             });
         }
+
 
         var sourceText = poi.Description?.Trim();
 
@@ -214,42 +309,6 @@ public sealed class NarrationController : ControllerBase
                 )
             )
         ).ToLowerInvariant();
-
-        var narrationRequest = new NarrationRequest
-        {
-            PoiId = poi.PoiId,
-            SessionId = request.SessionId,
-            LanguageCode = language.LanguageCode,
-            IdempotencyKey = idempotencyKey,
-            Status = NarrationRequestStatuses.Pending,
-            RequestedAt = DateTime.UtcNow
-        };
-
-        _db.NarrationRequests.Add(narrationRequest);
-
-        try
-        {
-            await _db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException)
-        {
-            // Có thể một request khác vừa lưu cùng key.
-            _db.Entry(narrationRequest).State =
-                EntityState.Detached;
-
-            var concurrentRequest = await FindRequestByKeyAsync(
-                idempotencyKey,
-                cancellationToken);
-
-            if (concurrentRequest is not null)
-            {
-                return HandleExistingRequest(
-                    concurrentRequest,
-                    request);
-            }
-
-            throw;
-        }
 
         try
         {
@@ -315,6 +374,11 @@ public sealed class NarrationController : ControllerBase
                         language.PiperVoice,
                         cancellationToken);
 
+                var durationSeconds =
+                    await GetAudioDurationSecondsAsync(
+                        audioBytes,
+                        cancellationToken);
+
                 var objectKey = $"{Guid.NewGuid():N}.mp3";
 
                 await _minio.UploadAudioAsync(
@@ -330,6 +394,7 @@ public sealed class NarrationController : ControllerBase
                         ?? "narration-audio",
                     ObjectKey = objectKey,
                     ContentType = "audio/mpeg",
+                    DurationSeconds = durationSeconds,
                     SizeBytes = audioBytes.LongLength,
                     TtsVoice = language.PiperVoice,
                     CreatedAt = DateTime.UtcNow
@@ -407,6 +472,22 @@ public sealed class NarrationController : ControllerBase
                         "Kiểm tra log AiService, Ollama, Piper và MinIO."
                 });
         }
+    }
+
+    private async Task MarkRequestFailedAsync(
+        NarrationRequest request,
+        string errorCode,
+        string errorMessage)
+    {
+        request.Status = NarrationRequestStatuses.Failed;
+        request.ErrorCode = errorCode.Length > 100
+            ? errorCode[..100]
+            : errorCode;
+        request.ErrorMessage = errorMessage;
+        request.CompletedAt = DateTime.UtcNow;
+        request.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(CancellationToken.None);
     }
 
     private async Task<NarrationRequest?> FindRequestByKeyAsync(
@@ -515,6 +596,99 @@ public sealed class NarrationController : ControllerBase
                     code = "AUDIO_STORAGE_ERROR",
                     message = "Không thể tải audio từ hệ thống lưu trữ."
                 });
+        }
+    }
+    private static async Task<decimal> GetAudioDurationSecondsAsync(
+        byte[] audioBytes,
+        CancellationToken cancellationToken)
+    {
+        if (audioBytes == null || audioBytes.Length == 0)
+        {
+            throw new ArgumentException(
+                "Audio data must not be empty.",
+                nameof(audioBytes));
+        }
+
+        var tempFilePath = Path.Combine(
+            Path.GetTempPath(),
+            $"{Guid.NewGuid():N}.mp3");
+
+        try
+        {
+            await System.IO.File.WriteAllBytesAsync(
+                tempFilePath,
+                audioBytes,
+                cancellationToken);
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "ffprobe",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            startInfo.ArgumentList.Add("-v");
+            startInfo.ArgumentList.Add("error");
+            startInfo.ArgumentList.Add("-show_entries");
+            startInfo.ArgumentList.Add("format=duration");
+            startInfo.ArgumentList.Add("-of");
+            startInfo.ArgumentList.Add(
+                "default=noprint_wrappers=1:nokey=1");
+            startInfo.ArgumentList.Add("-i");
+            startInfo.ArgumentList.Add(tempFilePath);
+
+            using var process = new Process
+            {
+                StartInfo = startInfo
+            };
+
+            if (!process.Start())
+            {
+                throw new InvalidOperationException(
+                    "Could not start FFprobe.");
+            }
+
+            var outputTask =
+                process.StandardOutput.ReadToEndAsync();
+
+            var errorTask =
+                process.StandardError.ReadToEndAsync();
+
+            await process.WaitForExitAsync(cancellationToken);
+
+            var output = await outputTask;
+            var error = await errorTask;
+
+            if (process.ExitCode != 0)
+            {
+                throw new InvalidOperationException(
+                    $"FFprobe failed to read audio: {error}");
+            }
+
+            if (!decimal.TryParse(
+                output.Trim(),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var durationSeconds) ||
+                durationSeconds <= 0)
+            {
+                throw new InvalidOperationException(
+                    "Could not determine audio duration.");
+            }
+
+            return Math.Round(
+                durationSeconds,
+                2,
+                MidpointRounding.AwayFromZero);
+        }
+        finally
+        {
+            if (System.IO.File.Exists(tempFilePath))
+            {
+                System.IO.File.Delete(tempFilePath);
+            }
         }
     }
 

@@ -24,7 +24,7 @@ builder.Services.AddSingleton<MinioService>();
 builder.Services.AddHttpClient<PoiServiceClient>(client =>
 {
     var baseUrl = builder.Configuration["PoiService:BaseUrl"]
-        ?? "http://host.docker.internal:5252/";
+        ?? "http://app_poiservice:8080/";
 
     client.BaseAddress = new Uri(
         baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/");
