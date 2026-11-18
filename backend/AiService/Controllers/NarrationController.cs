@@ -16,7 +16,7 @@ namespace AiService.Controllers;
 [Route("api/ai")]
 public sealed class NarrationController : ControllerBase
 {
-    private const string PromptVersion = "v1";
+    private const string PromptVersion = "v2";
 
     private readonly AiDbContext _db;
     private readonly PoiServiceClient _poiClient;
@@ -115,6 +115,8 @@ public sealed class NarrationController : ControllerBase
                 message = "Ngôn ngữ không tồn tại hoặc đang bị tắt."
             });
         }
+
+
         // Tạo và lưu request trước khi gọi các dịch vụ phụ thuộc.
         var narrationRequest = new NarrationRequest
         {
@@ -545,7 +547,6 @@ public sealed class NarrationController : ControllerBase
     }
 
     [HttpGet("audio/{objectName}")]
-    [Produces("audio/mpeg")]
     public async Task<IActionResult> GetAudio(
         string objectName,
         CancellationToken cancellationToken)
@@ -598,6 +599,7 @@ public sealed class NarrationController : ControllerBase
                 });
         }
     }
+
     private static async Task<decimal> GetAudioDurationSecondsAsync(
         byte[] audioBytes,
         CancellationToken cancellationToken)
