@@ -670,11 +670,10 @@ public sealed class NarrationController : ControllerBase
     /// Downloads generated narration audio for browser playback.
     /// </summary>
     [HttpGet("audio/{objectName}")]
-    [Produces("audio/mpeg")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> GetAudio(
         string objectName,
         CancellationToken cancellationToken)
@@ -707,26 +706,30 @@ public sealed class NarrationController : ControllerBase
                 enableRangeProcessing: true);
         }
         catch (OperationCanceledException)
+{
+    throw;
+}
+        catch (Minio.Exceptions.ObjectNotFoundException)
         {
-            throw;
+            return NotFound(new
+            {
+                success = false,
+                code = "AUDIO_NOT_FOUND",
+                message = "Không tìm thấy tệp audio."
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(
-                ex,
-                "Failed to download audio object {ObjectName}.",
-                objectName);
+            _logger.LogError(ex, "Failed to download audio object {ObjectName}.", objectName);
 
-            return StatusCode(
-                StatusCodes.Status502BadGateway,
-                new
-                {
-                    success = false,
-                    code = "AUDIO_STORAGE_ERROR",
-                    message = "Không thể tải audio từ hệ thống lưu trữ."
-                });
+            return StatusCode(StatusCodes.Status502BadGateway, new
+            {
+                success = false,
+                code = "AUDIO_STORAGE_ERROR",
+                message = "Không thể tải audio từ hệ thống lưu trữ."
+            });
         }
-    }
+            }
 
     private static async Task<decimal> GetAudioDurationSecondsAsync(
         byte[] audioBytes,
