@@ -97,6 +97,22 @@ public class MinioService
         await _minioClient.PutObjectAsync(args, cancellationToken);
     }
 
+
+    // Xóa object đã upload nhưng không thể lưu metadata vào PostgreSQL.
+    public async Task DeleteAudioAsync(
+        string objectName,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(objectName))
+            throw new ArgumentException("Tên file không được để trống.", nameof(objectName));
+
+        var args = new RemoveObjectArgs()
+            .WithBucket(GetAudioBucketName())
+            .WithObject(objectName);
+
+        await _minioClient.RemoveObjectAsync(args, cancellationToken);
+    }
+
     // Tải file MP3 từ MinIO về bộ nhớ để API trả về cho người dùng.
     public async Task<byte[]> DownloadAudioAsync(
         string objectName,

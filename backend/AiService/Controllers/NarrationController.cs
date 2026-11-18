@@ -87,16 +87,69 @@ public sealed class NarrationController : ControllerBase
 
         var idempotencyKey = request.IdempotencyKey.Value;
 
-        // Kiểm tra key đã tồn tại hay chưa.
+        // A failed request may be retried with the same key and identical payload.
+        // ExecuteUpdate makes the retry claim atomic: only one concurrent caller wins.
+        NarrationRequest? retryRequest = null;
         var priorRequest = await FindRequestByKeyAsync(
             idempotencyKey,
             cancellationToken);
 
         if (priorRequest is not null)
         {
-            return HandleExistingRequest(
-                priorRequest,
-                request);
+            if (priorRequest.PoiId != request.PoiId ||
+                priorRequest.SessionId != request.SessionId ||
+                !string.Equals(
+                    priorRequest.LanguageCode,
+                    request.LanguageCode,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return Conflict(new
+                {
+                    success = false,
+                    code = "IDEMPOTENCY_KEY_REUSED",
+                    message = "IdempotencyKey đã được sử dụng cho một yêu cầu khác."
+                });
+            }
+
+            if (priorRequest.Status == NarrationRequestStatuses.Success &&
+                priorRequest.NarrationContent?.AudioFile is { } cachedAudio)
+            {
+                return Ok(BuildResponse(
+                    priorRequest,
+                    priorRequest.NarrationContent,
+                    cachedAudio));
+            }
+
+            if (priorRequest.Status != NarrationRequestStatuses.Failed)
+            {
+                return HandleExistingRequest(priorRequest, request);
+            }
+
+            var retryClaimed = await _db.NarrationRequests
+                .Where(x => x.RequestId == priorRequest.RequestId &&
+                            x.Status == NarrationRequestStatuses.Failed)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(x => x.Status, NarrationRequestStatuses.Pending)
+                    .SetProperty(x => x.RetryCount, x => x.RetryCount + 1)
+                    .SetProperty(x => x.ErrorCode, (string?)null)
+                    .SetProperty(x => x.ErrorMessage, (string?)null)
+                    .SetProperty(x => x.StartedAt, (DateTime?)null)
+                    .SetProperty(x => x.CompletedAt, (DateTime?)null)
+                    .SetProperty(x => x.UpdatedAt, DateTime.UtcNow),
+                    cancellationToken);
+
+            if (retryClaimed == 0)
+            {
+                var latest = await FindRequestByKeyAsync(
+                    idempotencyKey,
+                    cancellationToken);
+                return latest is null
+                    ? Conflict(new { success = false, code = "RETRY_CONFLICT", message = "Không thể nhận lại yêu cầu." })
+                    : HandleExistingRequest(latest, request);
+            }
+
+            retryRequest = await _db.NarrationRequests
+                .FirstAsync(x => x.RequestId == priorRequest.RequestId, cancellationToken);
         }
 
         var language = await _db.Languages
@@ -117,8 +170,8 @@ public sealed class NarrationController : ControllerBase
         }
 
 
-        // Tạo và lưu request trước khi gọi các dịch vụ phụ thuộc.
-        var narrationRequest = new NarrationRequest
+        // Persist a new request before calling dependencies. A claimed retry reuses its row.
+        var narrationRequest = retryRequest ?? new NarrationRequest
         {
             PoiId = request.PoiId,
             SessionId = request.SessionId,
@@ -129,29 +182,29 @@ public sealed class NarrationController : ControllerBase
             UpdatedAt = DateTime.UtcNow
         };
 
-        _db.NarrationRequests.Add(narrationRequest);
-
-        try
+        if (retryRequest is null)
         {
-            await _db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException)
-        {
-            // Có thể một request khác vừa lưu cùng key.
-            _db.Entry(narrationRequest).State = EntityState.Detached;
+            _db.NarrationRequests.Add(narrationRequest);
 
-            var concurrentRequest = await FindRequestByKeyAsync(
-                idempotencyKey,
-                cancellationToken);
-
-            if (concurrentRequest is not null)
+            try
             {
-                return HandleExistingRequest(
-                    concurrentRequest,
-                    request);
+                await _db.SaveChangesAsync(cancellationToken);
             }
+            catch (DbUpdateException)
+            {
+                _db.Entry(narrationRequest).State = EntityState.Detached;
 
-            throw;
+                var concurrentRequest = await FindRequestByKeyAsync(
+                    idempotencyKey,
+                    cancellationToken);
+
+                if (concurrentRequest is not null)
+                {
+                    return HandleExistingRequest(concurrentRequest, request);
+                }
+
+                throw;
+            }
         }
 
         // Chỉ gọi PoiService sau khi request đã được lưu thành công.
@@ -267,7 +320,7 @@ public sealed class NarrationController : ControllerBase
             await MarkRequestFailedAsync(
                 narrationRequest,
                 "POI_SERVICE_ERROR",
-                ex.Message);
+                "Có lỗi xảy ra khi lấy thông tin địa điểm.");
 
             return StatusCode(
                 StatusCodes.Status502BadGateway,
@@ -312,6 +365,8 @@ public sealed class NarrationController : ControllerBase
             )
         ).ToLowerInvariant();
 
+        string? uploadedObjectKey = null;
+
         try
         {
             narrationRequest.Status =
@@ -322,6 +377,19 @@ public sealed class NarrationController : ControllerBase
 
             await _db.SaveChangesAsync(cancellationToken);
 
+            // Serialize generation for the same POI/language/source/prompt across
+            // all AiService instances. PostgreSQL releases this lock at transaction end.
+            await using var contentTransaction =
+                await _db.Database.BeginTransactionAsync(cancellationToken);
+
+            var lockIdentity =
+                $"{poi.PoiId}|{language.LanguageCode}|{sourceHash}|{PromptVersion}";
+            await _db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({lockIdentity}, 0))",
+                cancellationToken);
+
+            // Re-check after acquiring the lock; another request may have completed
+            // content/audio generation while this request was waiting.
             // Tìm nội dung đã được tạo trước đó.
             var content = await _db.NarrationContents
                 .FirstOrDefaultAsync(
@@ -383,6 +451,9 @@ public sealed class NarrationController : ControllerBase
 
                 var objectKey = $"{Guid.NewGuid():N}.mp3";
 
+                // Assign before upload so a partially completed upload can be cleaned up.
+                uploadedObjectKey = objectKey;
+
                 await _minio.UploadAudioAsync(
                     objectKey,
                     audioBytes,
@@ -417,6 +488,7 @@ public sealed class NarrationController : ControllerBase
             narrationRequest.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync(cancellationToken);
+            await contentTransaction.CommitAsync(cancellationToken);
 
             return Ok(BuildResponse(
                 narrationRequest,
@@ -426,33 +498,70 @@ public sealed class NarrationController : ControllerBase
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
         {
-            narrationRequest.Status =
-                NarrationRequestStatuses.Failed;
+            // Clean up a possibly uploaded object when the request is cancelled.
+            if (!string.IsNullOrWhiteSpace(uploadedObjectKey))
+            {
+                try
+                {
+                    await _minio.DeleteAudioAsync(
+                        uploadedObjectKey,
+                        CancellationToken.None);
+                }
+                catch (Exception cleanupException)
+                {
+                    _logger.LogError(
+                        cleanupException,
+                        "Failed to clean up MinIO object {ObjectKey} after request cancellation.",
+                        uploadedObjectKey);
+                }
+            }
 
-            narrationRequest.ErrorCode = "REQUEST_CANCELLED";
-            narrationRequest.ErrorMessage =
-                "The request was cancelled.";
+            _db.ChangeTracker.Clear();
 
-            narrationRequest.CompletedAt = DateTime.UtcNow;
-            narrationRequest.UpdatedAt = DateTime.UtcNow;
+            var failedRequest = await _db.NarrationRequests
+                .FirstAsync(
+                    x => x.RequestId == narrationRequest.RequestId,
+                    CancellationToken.None);
+
+            failedRequest.Status = NarrationRequestStatuses.Failed;
+            failedRequest.ErrorCode = "REQUEST_CANCELLED";
+            failedRequest.ErrorMessage = "Yêu cầu đã bị hủy.";
+            failedRequest.CompletedAt = DateTime.UtcNow;
+            failedRequest.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync(CancellationToken.None);
-
             throw;
         }
         catch (Exception ex)
         {
-            narrationRequest.Status =
-                NarrationRequestStatuses.Failed;
+            if (!string.IsNullOrWhiteSpace(uploadedObjectKey))
+            {
+                try
+                {
+                    await _minio.DeleteAudioAsync(
+                        uploadedObjectKey,
+                        CancellationToken.None);
+                }
+                catch (Exception cleanupException)
+                {
+                    _logger.LogError(
+                        cleanupException,
+                        "Failed to clean up orphaned MinIO object {ObjectKey}.",
+                        uploadedObjectKey);
+                }
+            }
 
-            narrationRequest.ErrorCode =
-                ex.GetType().Name.Length > 100
-                    ? ex.GetType().Name[..100]
-                    : ex.GetType().Name;
+            _db.ChangeTracker.Clear();
+            var failedRequest = await _db.NarrationRequests
+                .FirstAsync(x => x.RequestId == narrationRequest.RequestId,
+                    CancellationToken.None);
 
-            narrationRequest.ErrorMessage = ex.Message;
-            narrationRequest.CompletedAt = DateTime.UtcNow;
-            narrationRequest.UpdatedAt = DateTime.UtcNow;
+            failedRequest.Status = NarrationRequestStatuses.Failed;
+            failedRequest.ErrorCode = "NARRATION_GENERATION_FAILED";
+            failedRequest.ErrorMessage =
+                "Không thể tạo nội dung hoặc lưu audio. Vui lòng thử lại.";
+            failedRequest.CompletedAt = DateTime.UtcNow;
+            failedRequest.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync(CancellationToken.None);
 
