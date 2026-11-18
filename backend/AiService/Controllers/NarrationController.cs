@@ -41,12 +41,23 @@ public sealed class NarrationController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Generates narration text and audio for a POI and visit session.
+    /// </summary>
+    /// <remarks>
+    /// The request must include an idempotency key.
+    /// Reusing the same key with a different payload returns HTTP 409.
+    /// A successful response includes the request ID, narration text,
+    /// audio metadata and an audio playback URL.
+    /// </remarks>
     [HttpPost("narration")]
     [EnableRateLimiting("ai-narration")]
+    [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     [ProducesResponseType(StatusCodes.Status504GatewayTimeout)]
@@ -655,7 +666,15 @@ public sealed class NarrationController : ControllerBase
         });
     }
 
+    /// <summary>
+    /// Downloads generated narration audio for browser playback.
+    /// </summary>
     [HttpGet("audio/{objectName}")]
+    [Produces("audio/mpeg")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> GetAudio(
         string objectName,
         CancellationToken cancellationToken)
