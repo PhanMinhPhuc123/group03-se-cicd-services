@@ -1,28 +1,26 @@
+
 # .NET
 **/bin/
 **/obj/
 
-# Visual Studio Code
-.vscode/
+# Frontend dependencies and build output
+**/node_modules/
+**/dist/
 
-# User-specific files
+# Environment variables and secrets
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local application settings
+**/appsettings.Development.json
+
+# IDE
+.vscode/
+.idea/
 *.user
 *.suo
 
-# Environment / secrets
-.env
-.env.*
-!.env.example
-
-# Local application settings
-**/appsettings.json
-!backend/ApiGateway/appsettings.json
-**/appsettings.Development.json
-
-# OS
+# Operating system
 .DS_Store
 Thumbs.db
-
-# Old repositories / local copies
-CNPM-N03/
-group03-se-cicd-services/

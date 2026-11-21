@@ -1,0 +1,4 @@
+/api/POIs https://computers-therapeutic-cedar-touring.trycloudflare.com/api/POIs 200
+/api/POIs/* https://computers-therapeutic-cedar-touring.trycloudflare.com/api/POIs/:splat 200
+/api/* https://skills-emerging-harbour-ready.trycloudflare.com/api/:splat 200
+/* /index.html 200
