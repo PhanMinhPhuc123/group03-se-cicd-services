@@ -1465,3 +1465,329 @@ select:focus-visible {
   overflow-wrap: anywhere;
   color: #52645b;
 }
+
+.nearby-map {
+  width: 100%;
+  height: 450px;
+  border-radius: 12px;
+  z-index: 1;
+}
+
+/* Khu vực địa điểm gần bạn */
+.nearby-section {
+  position: relative;
+  display: flow-root;
+  width: 100%;
+  box-sizing: border-box;
+  padding-top: 64px;
+  padding-bottom: 64px;
+  clear: both;
+}
+
+.nearby-section .container {
+  width: min(1200px, calc(100% - 40px));
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+.nearby-section .section-heading {
+  position: relative;
+  margin-bottom: 28px;
+}
+
+.nearby-section .places-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 24px;
+  width: 100%;
+}
+
+.nearby-section .place-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.nearby-section .place-card-visual {
+  position: relative;
+  flex: 0 0 210px;
+  height: 210px;
+  min-height: 210px;
+  overflow: hidden;
+}
+
+.nearby-section .place-card-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nearby-section .place-card-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.nearby-section .place-card-content h3,
+.nearby-section .place-card-content p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.nearby-section .place-card-content button {
+  margin-top: auto;
+}
+
+.nearby-section .empty-state {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 28px;
+  overflow-wrap: anywhere;
+}
+
+.map-section,
+.places-section,
+.guide-section {
+  position: relative;
+  clear: both;
+}
+
+.map-frame-wrap {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.nearby-map {
+  display: block;
+  width: 100%;
+  height: 450px;
+  min-height: 350px;
+  border-radius: 12px;
+  z-index: 1;
+}
+
+@media (max-width: 900px) {
+  .nearby-section .places-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 600px) {
+  .nearby-section {
+    padding-top: 40px;
+    padding-bottom: 40px;
+  }
+
+  .nearby-section .container {
+    width: calc(100% - 28px);
+  }
+
+  .nearby-section .places-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .nearby-section .place-card-visual {
+    flex-basis: 200px;
+    height: 200px;
+    min-height: 200px;
+  }
+
+  .nearby-section .place-card-content {
+    padding: 16px;
+  }
+
+  .nearby-map {
+    height: 350px;
+    min-height: 300px;
+  }
+}
+/* Khu vực thao tác thuyết minh địa điểm */
+.guide-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.guide-actions .detail-button {
+  margin-top: 0;
+}
+
+.guide-actions .detail-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.guide-coming-soon {
+  margin: 0;
+  color: #7a837b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Vị trí người dùng: chấm xanh nhỏ */
+.user-map-marker {
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #4285f4;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+
+/* Địa điểm tham quan: ghim đỏ nhỏ */
+.poi-map-marker {
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  background: #e53935;
+  border: 2px solid #ffffff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* Khu vực thuyết minh AI */
+.ai-narration-panel {
+  width: 100%;
+  margin-top: 20px;
+  padding: 24px;
+  border: 1px solid var(--line, #e7e5dc);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text, #24382f);
+}
+
+.ai-narration-panel h3 {
+  margin: 0 0 16px;
+  color: var(--green-dark, #193e30);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.ai-narration-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ai-narration-controls label {
+  color: var(--muted, #78837b);
+  font-size: 12px;
+}
+
+.ai-narration-controls select {
+  max-width: 100%;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--line, #e7e5dc);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--green-dark, #193e30);
+}
+
+.ai-narration-text {
+  margin-top: 16px;
+  padding: 18px;
+  border-left: 3px solid var(--gold, #c9a66b);
+  border-radius: 0 8px 8px 0;
+  background: var(--cream, #f5f1e7);
+  color: var(--text, #24382f);
+  font-size: 13px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ai-narration-error {
+  margin-top: 12px;
+  color: #a33f35;
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.ai-narration-status {
+  margin-top: 12px;
+  color: var(--muted, #78837b);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+@media (max-width: 640px) {
+  .ai-narration-panel {
+    padding: 18px;
+    border-radius: 10px;
+  }
+
+  .ai-narration-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ai-narration-controls select {
+    width: 100%;
+  }
+
+  .ai-narration-controls .button {
+    width: 100%;
+  }
+
+  .ai-narration-text {
+    padding: 14px;
+    font-size: 12px;
+  }
+}
+
+
+/* Ghi chú dữ liệu tọa độ nằm dưới bản đồ, không thay thế bản đồ. */
+.map-data-note {
+  margin: 12px 0 0;
+  padding: 12px 16px;
+  border: 1px solid rgba(44, 112, 139, 0.18);
+  border-radius: 12px;
+  background: #f4f9fb;
+  color: #587083;
+  font-size: 0.92rem;
+}
+
+/* Nút chỉ đường luôn nằm ngay dưới bản đồ cũ. */
+.map-direction-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: #176b87;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgba(23, 107, 135, 0.16);
+}
+.map-direction-link:hover {
+  background: #10566e;
+}
