@@ -1,13 +1,17 @@
-name: Project CI
+
+name: CI
 
 on:
   push:
     branches:
+      - main
+      - develop
       - 'feature/**'
+
   pull_request:
     branches:
-      - develop
       - main
+      - develop
 
 permissions:
   contents: read
@@ -17,22 +21,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  compose-config:
-    name: Validate Docker Compose
+  frontend:
+    name: Frontend lint and build
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        working-directory: frontend
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
 
-      - name: Validate Compose configuration
+  backend:
+    name: Backend build (.NET 10)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project:
+          - backend/AuthService/AuthService.csproj
+          - backend/PoiService/PoiService.csproj
+          - backend/AiService/AiService.csproj
+          - backend/ApiGateway/ApiGateway.csproj
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore
+        run: dotnet restore "${{ matrix.project }}"
+      - name: Build
+        run: dotnet build "${{ matrix.project }}" --configuration Release --no-restore
+
+  compose-config:
+    name: Validate Docker Compose configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose syntax with safe placeholders
         working-directory: backend
-        env:
-          POSTGRES_USER: ci_user
-          POSTGRES_PASSWORD: ci_test_password
-          POSTGRES_DB: ci_db
-          RABBITMQ_DEFAULT_USER: ci_user
-          RABBITMQ_DEFAULT_PASS: ci_test_password
-          MINIO_ROOT_USER: ci_minio
-          MINIO_ROOT_PASSWORD: ci_minio_test_password
-        run: docker compose -f docker-compose.example.yml config --quiet
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
