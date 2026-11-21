@@ -30,7 +30,7 @@ const POI_IMAGES = {
   'Chợ Bình Tây': 'cho-binh-tay.webp',
   'Chùa Bà Thiên Hậu': 'chua-ba-thien-hau.webp',
   'Địa đạo Củ Chi': 'dia-dao-cu-chi.webp',
-  'Landmark 81': 'Landmark 81.jpg',
+  'Landmark 81': 'landmark-81.jpg',
 }
 
 // Chuẩn hóa tên để so khớp khi API có khác biệt chữ hoa/thường hoặc khoảng trắng.
