@@ -1,0 +1,130 @@
+
+.admin-login-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: #f3f6fb;
+    font-family: Arial, sans-serif;
+  }
+  
+  .admin-login-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 36px;
+    background: #fff;
+    border: 1px solid #e5eaf2;
+    border-radius: 16px;
+    box-shadow: 0 16px 45px rgba(30, 50, 80, 0.09);
+  }
+  
+  .admin-login-eyebrow {
+    margin: 0 0 12px;
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+  }
+  
+  .admin-login-card h1 {
+    margin: 0 0 10px;
+    color: #172033;
+    font-size: 27px;
+  }
+  
+  .admin-login-description {
+    margin: 0 0 28px;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  
+  .admin-login-card label {
+    display: block;
+    margin: 18px 0 8px;
+    color: #263449;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  
+  .admin-login-card input {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    outline: none;
+    font-size: 14px;
+  }
+  
+  .admin-login-card input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+  
+  .admin-login-card button {
+    width: 100%;
+    margin-top: 22px;
+    padding: 13px;
+    border: none;
+    border-radius: 8px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  
+  .admin-login-card button:disabled {
+    cursor: wait;
+    opacity: 0.7;
+  }
+  
+  .admin-login-card .admin-login-back {
+    margin-top: 10px;
+    background: #eef2f7;
+    color: #334155;
+  }
+  
+  .admin-login-error {
+    margin-top: 18px;
+    padding: 12px;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    background: #fef2f2;
+    color: #b91c1c;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+
+/* Login admin — travel editorial treatment */
+.admin-login-page {
+  position:relative; isolation:isolate; overflow:hidden;
+  min-height:100vh; padding:28px;
+  background:
+    linear-gradient(115deg,rgba(4,48,70,.88),rgba(5,93,124,.68)),
+    url('https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=2200&q=90') center/cover;
+  font-family:'Be Vietnam Pro',sans-serif;
+}
+.admin-login-page::before {
+  position:absolute; z-index:-1; inset:0; content:'';
+  background:radial-gradient(circle at 18% 18%,rgba(93,211,222,.28),transparent 30%),linear-gradient(0deg,rgba(2,37,56,.25),transparent 55%);
+}
+.admin-login-card {
+  width:min(100%,440px); padding:42px;
+  border:1px solid rgba(255,255,255,.55); border-radius:22px;
+  background:rgba(255,255,255,.96); backdrop-filter:blur(16px);
+  box-shadow:0 28px 90px rgba(0,31,48,.28);
+}
+.admin-login-eyebrow { color:#0783a8; letter-spacing:2px; font-size:10px; }
+.admin-login-card h1 { color:#123d54; font-size:29px; letter-spacing:-.8px; }
+.admin-login-description { color:#748b98; font-size:12px; line-height:1.8; }
+.admin-login-card label { color:#31576a; font-size:12px; }
+.admin-login-card input { min-height:48px; padding:0 14px; border:1px solid #d8e7ec; border-radius:10px; background:#fbfdfe; color:#173e54; font-family:inherit; }
+.admin-login-card input:focus { border-color:#26a4bd; box-shadow:0 0 0 4px rgba(38,164,189,.12); }
+.admin-login-card button { min-height:48px; border-radius:10px; background:linear-gradient(110deg,#087eaa,#20a7bc); box-shadow:0 8px 18px rgba(8,126,170,.18); font-family:inherit; font-size:13px; }
+.admin-login-card button:hover { filter:brightness(1.05); transform:translateY(-1px); }
+.admin-login-card .admin-login-back { background:#edf7f9; color:#27647b; box-shadow:none; }
+@media(max-width:520px) { .admin-login-page { padding:16px; } .admin-login-card { padding:28px 22px; } }
