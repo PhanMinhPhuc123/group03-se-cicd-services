@@ -15,24 +15,18 @@ public class TourPOIsController : ControllerBase
 
     public TourPOIsController(PoiDbContext context) => _context = context;
 
-
     [AllowAnonymous]
     [HttpGet("{tourId:guid}")]
     public async Task<IActionResult> GetTourPOIs(Guid tourId)
     {
-        var isAdmin = User.IsInRole("Admin");
+        var tourVisible = await _context.Tours.AsNoTracking()
+            .AnyAsync(t => t.TourId == tourId && t.IsVisible);
 
-        var tourExists = await _context.Tours.AsNoTracking()
-            .AnyAsync(t => t.TourId == tourId &&
-                           (isAdmin || t.IsVisible));
-
-        if (!tourExists)
+        if (!tourVisible && !User.IsInRole("Admin"))
             return NotFound();
 
         var items = await _context.TourPOIs.AsNoTracking()
-            .Where(tp => tp.TourId == tourId &&
-                         (isAdmin || _context.POIs.Any(p =>
-                             p.PoiId == tp.PoiId && p.IsVisible)))
+            .Where(tp => tp.TourId == tourId)
             .OrderBy(tp => tp.DisplayOrder)
             .ToListAsync();
 
@@ -43,33 +37,18 @@ public class TourPOIsController : ControllerBase
     [HttpGet("{tourId:guid}/{poiId:guid}")]
     public async Task<IActionResult> GetTourPOI(Guid tourId, Guid poiId)
     {
-        var isAdmin = User.IsInRole("Admin");
-
-        var tourExists = await _context.Tours.AsNoTracking()
-            .AnyAsync(t => t.TourId == tourId &&
-                           (isAdmin || t.IsVisible));
-
-        if (!tourExists)
-            return NotFound();
-
         var item = await _context.TourPOIs.AsNoTracking()
             .FirstOrDefaultAsync(tp =>
-                tp.TourId == tourId &&
-                tp.PoiId == poiId &&
-                (isAdmin || _context.POIs.Any(p =>
-                    p.PoiId == tp.PoiId && p.IsVisible)));
+                tp.TourId == tourId && tp.PoiId == poiId);
 
-        return item is null ? NotFound() : Ok(item);
+        if (item is null) return NotFound();
+        return Ok(item);
     }
-
 
     [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> AddPOIToTour([FromBody] TourPOI item)
     {
-        if (item.DisplayOrder < 0)
-            return BadRequest("Thứ tự POI không được là số âm.");
-
         var tourExists = await _context.Tours
             .AnyAsync(t => t.TourId == item.TourId);
 
@@ -98,9 +77,6 @@ public class TourPOIsController : ControllerBase
     public async Task<IActionResult> UpdateTourPOI(
         Guid tourId, Guid poiId, [FromBody] UpdateTourPOIRequest request)
     {
-        if (request.DisplayOrder < 0)
-            return BadRequest("Thứ tự POI không được là số âm.");
-
         var item = await _context.TourPOIs.FirstOrDefaultAsync(tp =>
             tp.TourId == tourId && tp.PoiId == poiId);
 

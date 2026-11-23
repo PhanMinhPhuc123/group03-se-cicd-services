@@ -28,4 +28,6 @@ public class VisitSession
     public DateTime? GpsConsentAt { get; set; }
 
     public DateTime? GpsUpdatedAt { get; set; }
+
+    public string? SelectedPoiName { get; set; }
 }

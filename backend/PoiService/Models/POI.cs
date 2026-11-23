@@ -1,4 +1,3 @@
-
 namespace PoiService.Models;
 
 public class POI
@@ -18,6 +17,9 @@ public class POI
     public decimal? Latitude { get; set; }
 
     public decimal? Longitude { get; set; }
+
+    // Đường dẫn tham chiếu đến ảnh địa điểm được lưu trên MinIO
+    public string? ImageUrl { get; set; }
 
     public bool IsVisible { get; set; } = true;
 

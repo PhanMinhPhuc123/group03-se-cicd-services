@@ -31,6 +31,10 @@ public class PoiDbContext : DbContext
             entity.Property(x => x.Description).HasColumnName("description");
             entity.Property(x => x.Latitude).HasColumnName("latitude").HasPrecision(10, 7);
             entity.Property(x => x.Longitude).HasColumnName("longitude").HasPrecision(10, 7);
+            entity.Property(x => x.ImageUrl)
+            .HasColumnName("image_url")
+            .HasColumnType("text");
+
             entity.Property(x => x.IsVisible).HasColumnName("is_visible").HasDefaultValue(true);
             entity.Property(x => x.CreatedByAdminId).HasColumnName("created_by_admin_id");
             entity.Property(x => x.UpdatedByAdminId).HasColumnName("updated_by_admin_id");
@@ -104,12 +108,13 @@ public class PoiDbContext : DbContext
             entity.Property(x => x.UserAgent).HasColumnName("user_agent").HasColumnType("text");
             entity.Property(x => x.IpAddress).HasColumnName("ip_address").HasColumnType("inet");
             entity.Property(x => x.UiLanguageCode).HasColumnName("ui_language_code").HasMaxLength(10);
+
             entity.Property(x => x.GpsStatus).HasColumnName("gps_status").HasMaxLength(30).HasDefaultValue("not_requested");
             entity.Property(x => x.Latitude).HasColumnName("latitude").HasPrecision(10, 7);
             entity.Property(x => x.Longitude).HasColumnName("longitude").HasPrecision(10, 7);
             entity.Property(x => x.GpsConsentAt).HasColumnName("gps_consent_at").HasColumnType("timestamp with time zone");
             entity.Property(x => x.GpsUpdatedAt).HasColumnName("gps_updated_at").HasColumnType("timestamp with time zone");
-
+            entity.Property(x => x.SelectedPoiName).HasColumnName("selected_poi_name").HasMaxLength(255);
             entity.HasIndex(x => x.StartedAt);
             entity.HasIndex(x => x.LastActiveAt);
         });

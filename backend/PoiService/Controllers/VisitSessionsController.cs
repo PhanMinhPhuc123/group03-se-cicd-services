@@ -89,6 +89,37 @@ public class VisitSessionsController : ControllerBase
         });
     }
 
+[HttpPut("{id:guid}/selected-poi")]
+public async Task<IActionResult> UpdateSelectedPoi(
+    Guid id,
+    [FromBody] UpdateSelectedPoiRequest request)
+{
+    var poiName = Normalize(request.PoiName, 255);
+
+    if (string.IsNullOrWhiteSpace(poiName))
+        return BadRequest("Tên địa điểm không được để trống.");
+
+    var session = await _context.VisitSessions
+        .FirstOrDefaultAsync(s => s.SessionId == id);
+
+    if (session is null)
+        return NotFound("Không tìm thấy phiên tham quan.");
+
+    if (session.EndedAt.HasValue)
+        return BadRequest("Phiên tham quan đã kết thúc.");
+
+    session.SelectedPoiName = poiName;
+    session.LastActiveAt = DateTime.UtcNow;
+
+    await _context.SaveChangesAsync();
+
+    return Ok(new
+    {
+        sessionId = session.SessionId,
+        selectedPoiName = session.SelectedPoiName
+    });
+}
+
     [HttpPost("{id:guid}/heartbeat")]
     public async Task<IActionResult> Heartbeat(Guid id)
     {
@@ -130,36 +161,37 @@ public class VisitSessionsController : ControllerBase
         });
     }
 
-    [HttpGet("{id:guid}")]
-    public async Task<IActionResult> GetSession(Guid id)
+ [HttpGet("{id:guid}")]
+public async Task<IActionResult> GetSession(Guid id)
+{
+    var session = await _context.VisitSessions
+        .AsNoTracking()
+        .FirstOrDefaultAsync(s => s.SessionId == id);
+
+    if (session is null)
+        return NotFound("Không tìm thấy phiên tham quan.");
+
+    return Ok(new
     {
-        var session = await _context.VisitSessions
-            .AsNoTracking()
-            .FirstOrDefaultAsync(s => s.SessionId == id);
+        sessionId = session.SessionId,
+        startedAt = session.StartedAt,
+        lastActiveAt = session.LastActiveAt,
+        endedAt = session.EndedAt,
+        deviceName = session.DeviceName,
+        userAgent = session.UserAgent,
 
-        if (session is null)
-            return NotFound("Không tìm thấy phiên tham quan.");
+        // Chuyển IPAddress thành string để JSON serialize an toàn
+        ipAddress = session.IpAddress?.ToString(),
 
-        return Ok(new
-        {
-            sessionId = session.SessionId,
-            startedAt = session.StartedAt,
-            lastActiveAt = session.LastActiveAt,
-            endedAt = session.EndedAt,
-            deviceName = session.DeviceName,
-            userAgent = session.UserAgent,
-
-            // Chuyển IPAddress thành string để JSON serialize an toàn
-            ipAddress = session.IpAddress?.ToString(),
-
-            uiLanguageCode = session.UiLanguageCode,
-            gpsStatus = session.GpsStatus,
-            latitude = session.Latitude,
-            longitude = session.Longitude,
-            gpsConsentAt = session.GpsConsentAt,
-            gpsUpdatedAt = session.GpsUpdatedAt
-        });
-    }
+        uiLanguageCode = session.UiLanguageCode,
+        gpsStatus = session.GpsStatus,
+        selectedPoiName = session.SelectedPoiName,
+        latitude = session.Latitude,
+        longitude = session.Longitude,
+        gpsConsentAt = session.GpsConsentAt,
+        gpsUpdatedAt = session.GpsUpdatedAt
+    });
+}
 
     [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
     [HttpGet("stats")]
@@ -201,6 +233,7 @@ public class VisitSessionsController : ControllerBase
                 s.Longitude,
                 s.GpsConsentAt,
                 s.GpsUpdatedAt,
+                s.SelectedPoiName,
                 IsActive = !s.EndedAt.HasValue && s.LastActiveAt >= activeSince
             })
             .ToListAsync();
@@ -242,4 +275,9 @@ public sealed class UpdateGpsStatusRequest
     public string Status { get; set; } = "not_requested";
     public decimal? Latitude { get; set; }
     public decimal? Longitude { get; set; }
+}
+
+public sealed class UpdateSelectedPoiRequest
+{
+    public string? PoiName { get; set; }
 }

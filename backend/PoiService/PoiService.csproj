@@ -16,13 +16,17 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <!-- Dùng cùng phiên bản MinIO với AiService -->
+<PackageReference Include="Minio" Version="7.0.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="RabbitMQ.Client" Version="7.2.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="Migrations_Old_Backup/**/*.cs" />
-  </ItemGroup>
+<ItemGroup>
+  <Compile Remove="Migrations_Old_Backup/**/*.cs" />
+  <Compile Remove="Migrations_Backup_Before_Rebuild/**/*.cs" />
+  <Compile Remove="Migrations_Pending_Old/**/*.cs" />
+</ItemGroup>
 
 </Project>
