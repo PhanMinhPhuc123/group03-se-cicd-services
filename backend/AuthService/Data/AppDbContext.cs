@@ -25,7 +25,7 @@ public class AppDbContext : DbContext
 
             entity.Property(x => x.AdminId)
                 .HasColumnName("admin_id")
-                .ValueGeneratedNever();
+                .HasDefaultValueSql("gen_random_uuid()");
 
             entity.Property(x => x.Username)
                 .HasColumnName("username")
@@ -49,6 +49,7 @@ public class AppDbContext : DbContext
             entity.Property(x => x.CreatedAt)
                 .HasColumnName("created_at")
                 .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now()")
                 .IsRequired();
 
             entity.Property(x => x.UpdatedAt)
