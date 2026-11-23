@@ -1,48 +1,82 @@
-
-
 services:
-  # 1. Ứng dụng AiService
   aiservice:
     build:
       context: ./AiService
       dockerfile: Dockerfile
     container_name: app_aiservice
-    ports:
-      - "18080:8080"
     env_file:
       - .env
     environment:
-      # Ghi đè cấu hình appsettings.json bằng các biến môi trường
-      # Dùng tên service (postgres, rabbitmq, minio) làm Hostname
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      - RabbitMQ__Host=rabbitmq
-      - RabbitMQ__Username=${RABBITMQ_DEFAULT_USER}
-      - RabbitMQ__Password=${RABBITMQ_DEFAULT_PASS}
-      - Minio__Endpoint=minio:9000
-      - Minio__AccessKey=${MINIO_ROOT_USER}
-      - Minio__SecretKey=${MINIO_ROOT_PASSWORD}
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${AI_DB:-ai_db};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: ${RABBITMQ_DEFAULT_USER}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS}
+      Minio__Endpoint: minio:9000
+      Minio__AccessKey: ${MINIO_ROOT_USER}
+      Minio__SecretKey: ${MINIO_ROOT_PASSWORD}
+      Minio__BucketName: ${MINIO_BUCKET_NAME:-narration-audio}
+      Minio__UseSSL: "false"
+      PoiService__BaseUrl: http://poiservice:8080/
+      Ollama__BaseUrl: "http://host.docker.internal:11434/v1/"
+      Ollama__TextModel: "qwen2.5:3b"
+      Piper__BaseUrl: "http://piper-tts:5000/v1/"
+      Piper__VietnameseVoice: "vi_VN-vais1000-medium"
+      Piper__EnglishVoice: "en_US-lessac-medium"
+      Piper__ChineseVoice: "zh_CN-huayan-medium"
+      Piper__SpanishVoice: "es_ES-davefx-medium"
+      Piper__FrenchVoice: "fr_FR-siwis-medium"
+      Piper__GermanVoice: "de_DE-thorsten-medium"
+      Piper__RussianVoice: "ru_RU-denis-medium"
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       minio:
         condition: service_started
+      piper-tts:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
 
-  # 2. Database PostgreSQL (dùng pgvector như bạn chọn)
+  piper-tts:
+    image: kamilkrawiec/piper-openai-tts
+    container_name: app_piper_tts
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: "5000"
+    volumes:
+      - piper_data:/data
+    restart: unless-stopped
+
   postgres:
     image: pgvector/pgvector:pg17
     container_name: ai-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_db}
+      AUTH_DB: ${AUTH_DB:-auth_db}
+      POI_DB: ${POI_DB:-poi_db}
+      AI_DB: ${AI_DB:-ai_db}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
-  # 3. Message Broker RabbitMQ
   rabbitmq:
     image: rabbitmq:4-management
     container_name: ai-rabbitmq
@@ -58,21 +92,90 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    restart: unless-stopped
 
-  # 4. Storage MinIO
   minio:
     image: soldevelo/minio:2026.7
     container_name: ai-minio
     ports:
-      - "19000:9000"
-      - "19001:9001"
+      - "9000:9000"
+      - "9001:9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - minio_data:/bitnami/minio/data
     command: server /bitnami/minio/data --console-address ":9001"
+    restart: unless-stopped
+
+  authservice:
+    build:
+      context: ./AuthService
+      dockerfile: Dockerfile
+    container_name: app_authservice
+    env_file:
+      - .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${AUTH_DB:-auth_db};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: AuthService
+      Jwt__Audience: FrontEndApp
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  poiservice:
+    build:
+      context: ./PoiService
+      dockerfile: Dockerfile
+    container_name: app_poiservice
+    env_file:
+      - .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POI_DB:-poi_db};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: AuthService
+      Jwt__Audience: FrontEndApp
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: "5672"
+      RabbitMQ__Username: ${RABBITMQ_DEFAULT_USER}
+      RabbitMQ__Password: ${RABBITMQ_DEFAULT_PASS}
+      Minio__Endpoint: minio:9000
+      Minio__AccessKey: ${MINIO_ROOT_USER}
+      Minio__SecretKey: ${MINIO_ROOT_PASSWORD}
+      Minio__BucketName: poi-images
+      Minio__UseSSL: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    restart: unless-stopped
+
+  apigateway:
+    build:
+      context: ./ApiGateway
+      dockerfile: Dockerfile
+    container_name: app_apigateway
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    depends_on:
+      - authservice
+      - poiservice
+      - aiservice
+    restart: unless-stopped
 
 volumes:
   postgres_data:
   minio_data:
+  piper_data:
