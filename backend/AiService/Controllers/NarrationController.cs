@@ -123,12 +123,14 @@ public sealed class NarrationController : ControllerBase
             }
 
             if (priorRequest.Status == NarrationRequestStatuses.Success &&
-                priorRequest.NarrationContent?.AudioFile is { } cachedAudio)
+                priorRequest.NarrationContent is { } cachedContent)
             {
                 return Ok(BuildResponse(
                     priorRequest,
-                    priorRequest.NarrationContent,
-                    cachedAudio));
+                    cachedContent,
+                    IsAudioSupported(priorRequest.LanguageCode)
+                        ? cachedContent.AudioFile
+                        : null));
             }
 
             if (priorRequest.Status != NarrationRequestStatuses.Failed)
@@ -440,53 +442,59 @@ public sealed class NarrationController : ControllerBase
                 await _db.SaveChangesAsync(cancellationToken);
             }
 
-            // Tìm audio đã có.
-            var audio = await _db.AudioFiles
-                .FirstOrDefaultAsync(
-                    x => x.ContentId == content.ContentId,
-                    cancellationToken);
+            // Chỉ tạo/tái sử dụng audio cho tiếng Việt, Anh và Trung.
+            // Các ngôn ngữ còn lại vẫn hoàn tất phần văn bản, không gọi Piper.
+            AudioFile? audio = null;
 
-            if (audio is null)
+            if (IsAudioSupported(language.LanguageCode))
             {
-                var audioBytes =
-                    await _narrationService.GenerateSpeechAsync(
-                        content.GeneratedText,
-                        language.LanguageCode,
-                        language.PiperVoice,
+                audio = await _db.AudioFiles
+                    .FirstOrDefaultAsync(
+                        x => x.ContentId == content.ContentId,
                         cancellationToken);
 
-                var durationSeconds =
-                    await GetAudioDurationSecondsAsync(
+                if (audio is null)
+                {
+                    var audioBytes =
+                        await _narrationService.GenerateSpeechAsync(
+                            content.GeneratedText,
+                            language.LanguageCode,
+                            language.PiperVoice,
+                            cancellationToken);
+
+                    var durationSeconds =
+                        await GetAudioDurationSecondsAsync(
+                            audioBytes,
+                            cancellationToken);
+
+                    var objectKey = $"{Guid.NewGuid():N}.mp3";
+
+                    // Assign before upload so a partially completed upload can be cleaned up.
+                    uploadedObjectKey = objectKey;
+
+                    await _minio.UploadAudioAsync(
+                        objectKey,
                         audioBytes,
                         cancellationToken);
 
-                var objectKey = $"{Guid.NewGuid():N}.mp3";
+                    audio = new AudioFile
+                    {
+                        ContentId = content.ContentId,
+                        BucketName =
+                            _configuration["MinIO:BucketName"]
+                            ?? "narration-audio",
+                        ObjectKey = objectKey,
+                        ContentType = "audio/mpeg",
+                        DurationSeconds = durationSeconds,
+                        SizeBytes = audioBytes.LongLength,
+                        TtsVoice = language.PiperVoice,
+                        CreatedAt = DateTime.UtcNow
+                    };
 
-                // Assign before upload so a partially completed upload can be cleaned up.
-                uploadedObjectKey = objectKey;
+                    _db.AudioFiles.Add(audio);
 
-                await _minio.UploadAudioAsync(
-                    objectKey,
-                    audioBytes,
-                    cancellationToken);
-
-                audio = new AudioFile
-                {
-                    ContentId = content.ContentId,
-                    BucketName =
-                        _configuration["MinIO:BucketName"]
-                        ?? "narration-audio",
-                    ObjectKey = objectKey,
-                    ContentType = "audio/mpeg",
-                    DurationSeconds = durationSeconds,
-                    SizeBytes = audioBytes.LongLength,
-                    TtsVoice = language.PiperVoice,
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _db.AudioFiles.Add(audio);
-
-                await _db.SaveChangesAsync(cancellationToken);
+                    await _db.SaveChangesAsync(cancellationToken);
+                }
             }
 
             narrationRequest.NarrationContentId =
@@ -647,12 +655,14 @@ public sealed class NarrationController : ControllerBase
         }
 
         if (existing.Status == NarrationRequestStatuses.Success &&
-            existing.NarrationContent?.AudioFile is { } audio)
+            existing.NarrationContent is { } content)
         {
             return Ok(BuildResponse(
                 existing,
-                existing.NarrationContent,
-                audio));
+                content,
+                IsAudioSupported(existing.LanguageCode)
+                    ? content.AudioFile
+                    : null));
         }
 
         return Conflict(new
@@ -706,9 +716,9 @@ public sealed class NarrationController : ControllerBase
                 enableRangeProcessing: true);
         }
         catch (OperationCanceledException)
-{
-    throw;
-}
+        {
+            throw;
+        }
         catch (Minio.Exceptions.ObjectNotFoundException)
         {
             return NotFound(new
@@ -729,7 +739,7 @@ public sealed class NarrationController : ControllerBase
                 message = "Không thể tải audio từ hệ thống lưu trữ."
             });
         }
-            }
+    }
 
     private static async Task<decimal> GetAudioDurationSecondsAsync(
         byte[] audioBytes,
@@ -825,14 +835,32 @@ public sealed class NarrationController : ControllerBase
         }
     }
 
+    private static bool IsAudioSupported(string languageCode)
+    {
+        return languageCode.Trim().ToLowerInvariant() switch
+        {
+            "vi" or "vi-vn" => true,
+            "en" or "en-us" or "en-gb" => true,
+            "zh" or "zh-cn" or "zh-tw" => true,
+            _ => false
+        };
+    }
+
     private object BuildResponse(
         NarrationRequest request,
         NarrationContent content,
-        AudioFile audio)
+        AudioFile? audio)
     {
-        var audioUrl =
-            $"{Request.Scheme}://{Request.Host}/api/ai/audio/" +
-            Uri.EscapeDataString(audio.ObjectKey);
+        var audioResponse = audio is null
+            ? null
+            : new
+            {
+                audioId = audio.AudioId,
+                contentType = audio.ContentType,
+                sizeBytes = audio.SizeBytes,
+                audioUrl = $"{Request.Scheme}://{Request.Host}/api/ai/audio/" +
+                    Uri.EscapeDataString(audio.ObjectKey)
+            };
 
         return new
         {
@@ -845,13 +873,7 @@ public sealed class NarrationController : ControllerBase
             status = request.Status,
             narrationContentId = content.ContentId,
             narration = content.GeneratedText,
-            audio = new
-            {
-                audioId = audio.AudioId,
-                contentType = audio.ContentType,
-                sizeBytes = audio.SizeBytes,
-                audioUrl
-            }
+            audio = audioResponse
         };
     }
 }

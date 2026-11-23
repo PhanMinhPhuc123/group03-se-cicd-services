@@ -349,13 +349,13 @@ public sealed class NarrationGenerationService
 
         var languageCode = NormalizeLanguage(language);
 
-        // Piper voice availability is limited to the configured language models.
-        // Never read unsupported languages using a voice from another language.
-        if (languageCode is "ja" or "ko" or "th")
+        // Chỉ ba ngôn ngữ có mô hình Piper được sử dụng để tạo audio.
+        // Kiểm tra ngay trong service để ngăn mọi lời gọi Piper ngoài danh sách.
+        if (languageCode is not ("vi" or "en" or "zh"))
         {
             throw new NotSupportedException(
-                $"Piper TTS chưa được cấu hình giọng đọc cho ngôn ngữ '{languageCode}'. " +
-                "Hiện tại Piper hỗ trợ tiếng Việt, Anh, Trung, Tây Ban Nha, Pháp, Đức và Nga.");
+                $"Piper TTS hiện chỉ hỗ trợ tiếng Việt, tiếng Anh và tiếng Trung. " +
+                $"Không thể tạo audio cho ngôn ngữ '{languageCode}'.");
         }
 
         var defaultVoice = languageCode switch
@@ -368,18 +368,6 @@ public sealed class NarrationGenerationService
 
             "zh" => _configuration["Piper:ChineseVoice"]
                 ?? "zh_CN-huayan-medium",
-
-            "es" => _configuration["Piper:SpanishVoice"]
-                ?? "es_ES-davefx-medium",
-
-            "fr" => _configuration["Piper:FrenchVoice"]
-                ?? "fr_FR-siwis-medium",
-
-            "de" => _configuration["Piper:GermanVoice"]
-                ?? "de_DE-thorsten-medium",
-
-            "ru" => _configuration["Piper:RussianVoice"]
-                ?? "ru_RU-denis-medium",
 
             _ => throw new InvalidOperationException(
                 "Không tìm thấy giọng đọc phù hợp.")
@@ -403,22 +391,6 @@ public sealed class NarrationGenerationService
 
             "zh" when requested?.StartsWith(
                 "zh_CN-", StringComparison.OrdinalIgnoreCase) == true
-                => requested,
-
-            "es" when requested?.StartsWith(
-                "es_ES-", StringComparison.OrdinalIgnoreCase) == true
-                => requested,
-
-            "fr" when requested?.StartsWith(
-                "fr_FR-", StringComparison.OrdinalIgnoreCase) == true
-                => requested,
-
-            "de" when requested?.StartsWith(
-                "de_DE-", StringComparison.OrdinalIgnoreCase) == true
-                => requested,
-
-            "ru" when requested?.StartsWith(
-                "ru_RU-", StringComparison.OrdinalIgnoreCase) == true
                 => requested,
 
             _ => defaultVoice
