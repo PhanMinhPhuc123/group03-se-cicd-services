@@ -79,12 +79,12 @@ VALUES
     ('vi-VN', 'Tiếng Việt', 'vi_VN-vais1000-medium', TRUE),
     ('en-US', 'English', 'en_US-lessac-medium', TRUE),
     ('zh-CN', '中文', 'zh_CN-huayan-medium', TRUE),
-    ('es-ES', 'Español', 'es_ES-davefx-medium', TRUE),
-    ('fr-FR', 'Français', 'fr_FR-siwis-medium', TRUE),
-    ('de-DE', 'Deutsch', 'de_DE-thorsten-medium', TRUE),
-    ('ru-RU', 'Русский', 'ru_RU-denis-medium', TRUE),
-    ('ja-JP', '日本語', 'PENDING_JAPANESE_VOICE_MODEL', FALSE),
     ('ko-KR', '한국어', 'PENDING_KOREAN_VOICE_MODEL', FALSE),
+    ('ja-JP', '日本語', 'PENDING_JAPANESE_VOICE_MODEL', FALSE),
+    ('es-ES', 'Español', 'PENDING_SPANISH_VOICE_MODEL', FALSE),
+    ('fr-FR', 'Français', 'PENDING_FRENCH_VOICE_MODEL', FALSE),
+    ('de-DE', 'Deutsch', 'PENDING_GERMAN_VOICE_MODEL', FALSE),
+    ('ru-RU', 'Русский', 'PENDING_RUSSIAN_VOICE_MODEL', FALSE),
     ('th-TH', 'ไทย', 'PENDING_THAI_VOICE_MODEL', FALSE)
 ON CONFLICT (language_code) DO UPDATE SET
     language_name = EXCLUDED.language_name,

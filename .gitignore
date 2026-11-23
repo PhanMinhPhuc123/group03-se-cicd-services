@@ -2,24 +2,27 @@
 **/bin/
 **/obj/
 
-# Visual Studio Code
-.vscode/
+# Frontend dependencies and build output
+**/node_modules/
+**/dist/
 
-# User-specific files
-*.user
-*.suo
-
-# Environment / secrets
-.env
-.env.*
-!.env.example
+# Environment variables and secrets
+**/.env
+**/.env.*
+!**/.env.example
 
 # Local application settings
 **/appsettings.json
 !backend/ApiGateway/appsettings.json
 **/appsettings.Development.json
 
-# OS
+# IDE
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Operating system
 .DS_Store
 Thumbs.db
 
