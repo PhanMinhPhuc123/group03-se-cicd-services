@@ -138,22 +138,28 @@ export default function PlaceManagement() {
     };
   }, [imagePreview]);
 
-  const filteredPlaces = useMemo(() => {
-    const keyword = searchText.trim().toLocaleLowerCase("vi");
+const filteredPlaces = useMemo(() => {
+  const normalizeText = (value) =>
+    String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "d")
+      .toLocaleLowerCase("vi");
 
-    if (!keyword) return places;
+  const keyword = normalizeText(searchText.trim());
 
-    return places.filter((place) =>
-      [
-        place.poiId,
-        place.name,
-        place.address,
-        place.description,
-      ].some((value) =>
-        String(value ?? "").toLocaleLowerCase("vi").includes(keyword)
-      )
-    );
-  }, [places, searchText]);
+  if (!keyword) return places;
+
+  return places.filter((place) =>
+    [
+      place.poiId,
+      place.name,
+      place.address,
+      place.description,
+    ].some((value) => normalizeText(value).includes(keyword))
+  );
+}, [places, searchText]);
 
   function resetImage() {
     setSelectedImage(null);
