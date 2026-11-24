@@ -603,17 +603,20 @@ function normalizePlace(item, index) {
         'viTri',
       ]) || '',
 
-// Ưu tiên ảnh được ánh xạ theo tên địa điểm chuẩn.
-image: getPoiImage(
-  readField(item, [
-    'name',
-    'poiName',
-    'POIName',
-    'tenPOI',
-    'tenDiaDiem',
-    'title',
-  ])
-) || apiImage,
+// Nếu POI có ảnh Admin upload, lấy ảnh qua endpoint của POI Service.
+// Nếu chưa có ảnh upload, dùng ảnh mặc định theo tên địa điểm.
+image: apiImage
+  ? `/api/POIs/${encodeURIComponent(id)}/image`
+  : getPoiImage(
+      readField(item, [
+        'name',
+        'poiName',
+        'POIName',
+        'tenPOI',
+        'tenDiaDiem',
+        'title',
+      ])
+    ),
 
     // Đọc được cả tên thuộc tính tiếng Anh và tiếng Việt.
     lat: readCoordinate(item, [
@@ -1122,7 +1125,7 @@ const nearbyPlaces = useMemo(() => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            poiName: place.name,
+            poiId: place.id,
           }),
         },
       )
