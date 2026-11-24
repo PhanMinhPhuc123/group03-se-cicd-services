@@ -25,12 +25,41 @@ public class TourPOIsController : ControllerBase
         if (!tourVisible && !User.IsInRole("Admin"))
             return NotFound();
 
-        var items = await _context.TourPOIs.AsNoTracking()
-            .Where(tp => tp.TourId == tourId)
-            .OrderBy(tp => tp.DisplayOrder)
-            .ToListAsync();
+var items = await _context.TourPOIs
+    .AsNoTracking()
+    .Where(tp => tp.TourId == tourId)
+    .Include(tp => tp.Tour)
+    .Include(tp => tp.POI)
+    .OrderBy(tp => tp.DisplayOrder)
+    .Select(tp => new
+    {
+        tp.TourId,
+        tp.PoiId,
+        tp.DisplayOrder,
+        tp.AddedAt,
 
-        return Ok(items);
+        Tour = tp.Tour == null ? null : new
+        {
+            tp.Tour.TourId,
+            tp.Tour.Name,
+            tp.Tour.Description,
+            tp.Tour.IsVisible
+        },
+
+        POI = tp.POI == null ? null : new
+        {
+            tp.POI.PoiId,
+            tp.POI.Name,
+            tp.POI.Address,
+            tp.POI.Description,
+            tp.POI.Latitude,
+            tp.POI.Longitude,
+            tp.POI.ImageUrl
+        }
+    })
+    .ToListAsync();
+
+return Ok(items);
     }
 
     [AllowAnonymous]

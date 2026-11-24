@@ -15,22 +15,50 @@ public class ToursController : ControllerBase
 
     public ToursController(PoiDbContext context) => _context = context;
 
-    [AllowAnonymous]
-    [HttpGet]
-    public async Task<IActionResult> GetTours(
-        [FromQuery] bool includeHidden = false)
-    {
-        var query = _context.Tours.AsNoTracking();
 
-        if (!includeHidden || !User.IsInRole("Admin"))
-            query = query.Where(t => t.IsVisible);
+[AllowAnonymous]
+[HttpGet]
+public async Task<IActionResult> GetTours(
+    [FromQuery] bool includeHidden = false)
+{
+    var query = _context.Tours.AsNoTracking();
 
-        var tours = await query
-            .OrderBy(t => t.Name)
-            .ToListAsync();
+    if (!includeHidden || !User.IsInRole("Admin"))
+        query = query.Where(t => t.IsVisible);
 
-        return Ok(tours);
-    }
+    var tours = await query
+        .OrderBy(t => t.Name)
+        .Select(t => new
+        {
+            t.TourId,
+            t.Name,
+            t.Description,
+            t.IsVisible,
+
+            pois = _context.TourPOIs.AsNoTracking()
+                .Where(tp => tp.TourId == t.TourId)
+                .Join(
+                    _context.POIs.AsNoTracking()
+                        .Where(p => p.IsVisible),
+                    tp => tp.PoiId,
+                    poi => poi.PoiId,
+                    (tp, poi) => new
+                    {
+                        poi.PoiId,
+                        poi.Name,
+                        poi.Address,
+                        poi.Description,
+                        poi.Latitude,
+                        poi.Longitude,
+                        tp.DisplayOrder
+                    })
+                .OrderBy(x => x.DisplayOrder)
+                .ToList()
+        })
+        .ToListAsync();
+
+    return Ok(tours);
+}
 
     [AllowAnonymous]
     [HttpGet("{id:guid}")]

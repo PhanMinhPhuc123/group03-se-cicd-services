@@ -1,4 +1,4 @@
-﻿
+
 using System.Net;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -42,62 +42,80 @@ public class VisitSessionsController : ControllerBase
         });
     }
 
-    [HttpPut("{id:guid}/gps-status")]
-    public async Task<IActionResult> UpdateGpsStatus(
-        Guid id, [FromBody] UpdateGpsStatusRequest request)
+   
+[HttpPut("{id:guid}/gps-status")]
+public async Task<IActionResult> UpdateGpsStatus(
+    Guid id,
+    [FromBody] UpdateGpsStatusRequest? request)
+{
+    if (request is null)
+        return BadRequest("Dữ liệu GPS không hợp lệ.");
+
+    var status = (request.Status ?? string.Empty)
+        .Trim()
+        .ToLowerInvariant();
+
+    var allowed = new[]
     {
-        var status = (request.Status ?? string.Empty).Trim().ToLowerInvariant();
-        var allowed = new[] { "not_requested", "granted", "denied", "unavailable", "error" };
+        "not_requested",
+        "granted",
+        "denied",
+        "unavailable",
+        "error"
+    };
 
-        if (!allowed.Contains(status))
-            return BadRequest("gpsStatus không hợp lệ.");
+    if (!allowed.Contains(status))
+        return BadRequest("gpsStatus không hợp lệ.");
 
-        var session = await _context.VisitSessions
-            .FirstOrDefaultAsync(s => s.SessionId == id);
+    var session = await _context.VisitSessions
+        .FirstOrDefaultAsync(s => s.SessionId == id);
 
-        if (session is null) return NotFound("Không tìm thấy phiên tham quan.");
-        if (session.EndedAt.HasValue) return BadRequest("Phiên đã kết thúc.");
+    if (session is null)
+        return NotFound("Không tìm thấy phiên tham quan.");
 
-        if (status == "granted")
-        {
-            if (!ValidCoordinates(request.Latitude, request.Longitude))
-                return BadRequest("Trạng thái granted yêu cầu tọa độ hợp lệ.");
+    if (session.EndedAt.HasValue)
+        return BadRequest("Phiên đã kết thúc.");
 
-            session.Latitude = request.Latitude;
-            session.Longitude = request.Longitude;
-            session.GpsConsentAt ??= DateTime.UtcNow;
-        }
-        else
-        {
-            session.Latitude = null;
-            session.Longitude = null;
-            session.GpsConsentAt = null;
-        }
+    if (status == "granted")
+    {
+        if (!ValidCoordinates(request.Latitude, request.Longitude))
+            return BadRequest("Trạng thái granted yêu cầu tọa độ hợp lệ.");
 
-        session.GpsStatus = status;
-        session.GpsUpdatedAt = DateTime.UtcNow;
-        session.LastActiveAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-
-        return Ok(new
-        {
-            sessionId = session.SessionId,
-            gpsStatus = session.GpsStatus,
-            session.Latitude,
-            session.Longitude
-        });
+        session.Latitude = request.Latitude;
+        session.Longitude = request.Longitude;
+        session.GpsConsentAt ??= DateTime.UtcNow;
+    }
+    else
+    {
+        session.Latitude = null;
+        session.Longitude = null;
+        session.GpsConsentAt = null;
     }
 
+    session.GpsStatus = status;
+    session.GpsUpdatedAt = DateTime.UtcNow;
+    session.LastActiveAt = DateTime.UtcNow;
+
+    await _context.SaveChangesAsync();
+
+    return Ok(new
+    {
+        sessionId = session.SessionId,
+        gpsStatus = session.GpsStatus,
+        latitude = session.Latitude,
+        longitude = session.Longitude,
+        gpsUpdatedAt = session.GpsUpdatedAt
+    });
+}
+
+[Microsoft.AspNetCore.Authorization.AllowAnonymous]
 [HttpPut("{id:guid}/selected-poi")]
 public async Task<IActionResult> UpdateSelectedPoi(
     Guid id,
-    [FromBody] UpdateSelectedPoiRequest request)
+    [FromBody] UpdateSelectedPoiRequest? request)
 {
-    var poiName = Normalize(request.PoiName, 255);
-
-    if (string.IsNullOrWhiteSpace(poiName))
-        return BadRequest("Tên địa điểm không được để trống.");
+    if (request is null || request.PoiId == Guid.Empty)
+        return BadRequest("Mã POI không hợp lệ.");
 
     var session = await _context.VisitSessions
         .FirstOrDefaultAsync(s => s.SessionId == id);
@@ -108,7 +126,49 @@ public async Task<IActionResult> UpdateSelectedPoi(
     if (session.EndedAt.HasValue)
         return BadRequest("Phiên tham quan đã kết thúc.");
 
-    session.SelectedPoiName = poiName;
+    var poi = await _context.POIs
+        .AsNoTracking()
+        .Where(p => p.PoiId == request.PoiId && p.IsVisible)
+        .Select(p => new
+        {
+         p.PoiId,
+         p.Name,
+        p.ImageUrl
+        })
+        .FirstOrDefaultAsync();
+
+    if (poi is null)
+        return NotFound("Không tìm thấy địa điểm hoặc địa điểm không còn hiển thị.");
+
+    session.SelectedPoiName = poi.Name;
+session.LastActiveAt = DateTime.UtcNow;
+
+await _context.SaveChangesAsync();
+
+    return Ok(new
+    {
+        sessionId = session.SessionId,
+        poiId = poi.PoiId,
+        selectedPoiName = session.SelectedPoiName
+    });
+}
+
+    
+[HttpPost("{id:guid}/heartbeat")]
+public async Task<IActionResult> Heartbeat(Guid id)
+{
+    if (id == Guid.Empty)
+        return BadRequest("Mã phiên tham quan không hợp lệ.");
+
+    var session = await _context.VisitSessions
+        .FirstOrDefaultAsync(s => s.SessionId == id);
+
+    if (session is null)
+        return NotFound("Không tìm thấy phiên tham quan.");
+
+    if (session.EndedAt.HasValue)
+        return BadRequest("Phiên đã kết thúc.");
+
     session.LastActiveAt = DateTime.UtcNow;
 
     await _context.SaveChangesAsync();
@@ -116,57 +176,59 @@ public async Task<IActionResult> UpdateSelectedPoi(
     return Ok(new
     {
         sessionId = session.SessionId,
-        selectedPoiName = session.SelectedPoiName
+        lastActiveAt = session.LastActiveAt
     });
 }
 
-    [HttpPost("{id:guid}/heartbeat")]
-    public async Task<IActionResult> Heartbeat(Guid id)
+
+    
+[HttpPost("{id:guid}/end")]
+public async Task<IActionResult> End(Guid id)
+{
+    if (id == Guid.Empty)
+        return BadRequest("Mã phiên tham quan không hợp lệ.");
+
+    var session = await _context.VisitSessions
+        .FirstOrDefaultAsync(s => s.SessionId == id);
+
+    if (session is null)
+        return NotFound("Không tìm thấy phiên tham quan.");
+
+    // Nếu phiên chưa kết thúc thì cập nhật thời điểm kết thúc.
+    // Nếu đã kết thúc thì giữ nguyên thời điểm cũ.
+    if (!session.EndedAt.HasValue)
     {
-        var session = await _context.VisitSessions
-            .FirstOrDefaultAsync(s => s.SessionId == id);
+        var now = DateTime.UtcNow;
 
-        if (session is null) return NotFound();
-        if (session.EndedAt.HasValue) return BadRequest("Phiên đã kết thúc.");
+        session.EndedAt = now;
+        session.LastActiveAt = now;
 
-        session.LastActiveAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
-
-        return Ok(new
-        {
-            sessionId = id,
-            lastActiveAt = session.LastActiveAt
-        });
     }
 
-    [HttpPost("{id:guid}/end")]
-    public async Task<IActionResult> End(Guid id)
+    return Ok(new
     {
-        var session = await _context.VisitSessions
-            .FirstOrDefaultAsync(s => s.SessionId == id);
+        sessionId = session.SessionId,
+        endedAt = session.EndedAt
+    });
+}
 
-        if (session is null) return NotFound();
 
-        if (!session.EndedAt.HasValue)
-        {
-            session.EndedAt = DateTime.UtcNow;
-            session.LastActiveAt = session.EndedAt;
-            await _context.SaveChangesAsync();
-        }
 
-        return Ok(new
-        {
-            sessionId = id,
-            endedAt = session.EndedAt
-        });
-    }
-
- [HttpGet("{id:guid}")]
+[HttpGet("{id:guid}")]
 public async Task<IActionResult> GetSession(Guid id)
 {
     var session = await _context.VisitSessions
         .AsNoTracking()
-        .FirstOrDefaultAsync(s => s.SessionId == id);
+        .Where(s => s.SessionId == id)
+        .Select(s => new
+        {
+            s.SessionId,
+            s.StartedAt,
+            s.EndedAt,
+            s.SelectedPoiName
+        })
+        .FirstOrDefaultAsync();
 
     if (session is null)
         return NotFound("Không tìm thấy phiên tham quan.");
@@ -175,23 +237,11 @@ public async Task<IActionResult> GetSession(Guid id)
     {
         sessionId = session.SessionId,
         startedAt = session.StartedAt,
-        lastActiveAt = session.LastActiveAt,
         endedAt = session.EndedAt,
-        deviceName = session.DeviceName,
-        userAgent = session.UserAgent,
-
-        // Chuyển IPAddress thành string để JSON serialize an toàn
-        ipAddress = session.IpAddress?.ToString(),
-
-        uiLanguageCode = session.UiLanguageCode,
-        gpsStatus = session.GpsStatus,
-        selectedPoiName = session.SelectedPoiName,
-        latitude = session.Latitude,
-        longitude = session.Longitude,
-        gpsConsentAt = session.GpsConsentAt,
-        gpsUpdatedAt = session.GpsUpdatedAt
+        selectedPoiName = session.SelectedPoiName
     });
 }
+
 
     [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
     [HttpGet("stats")]
@@ -203,12 +253,11 @@ public async Task<IActionResult> GetSession(Guid id)
         pageSize = Math.Clamp(pageSize, 1, 200);
 
         var query = _context.VisitSessions.AsNoTracking();
-        var now = DateTime.UtcNow;
-        var activeSince = now.AddMinutes(-30);
-
         var total = await query.CountAsync();
+
         var active = await query.CountAsync(s =>
-            !s.EndedAt.HasValue && s.LastActiveAt >= activeSince);
+        !s.EndedAt.HasValue);
+
         var ended = await query.CountAsync(s => s.EndedAt.HasValue);
 
         var gpsCounts = await query
@@ -221,21 +270,21 @@ public async Task<IActionResult> GetSession(Guid id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(s => new
-            {
-                s.SessionId,
-                s.StartedAt,
-                s.LastActiveAt,
-                s.EndedAt,
-                s.DeviceName,
-                s.UiLanguageCode,
-                s.GpsStatus,
-                s.Latitude,
-                s.Longitude,
-                s.GpsConsentAt,
-                s.GpsUpdatedAt,
-                s.SelectedPoiName,
-                IsActive = !s.EndedAt.HasValue && s.LastActiveAt >= activeSince
-            })
+{
+    s.SessionId,
+s.StartedAt,
+s.LastActiveAt,
+s.EndedAt,
+s.DeviceName,
+s.UiLanguageCode,
+s.GpsStatus,
+s.Latitude,
+s.Longitude,
+s.GpsConsentAt,
+s.GpsUpdatedAt,
+s.SelectedPoiName,
+IsActive = !s.EndedAt.HasValue
+})
             .ToListAsync();
 
         return Ok(new
@@ -279,5 +328,5 @@ public sealed class UpdateGpsStatusRequest
 
 public sealed class UpdateSelectedPoiRequest
 {
-    public string? PoiName { get; set; }
+    public Guid PoiId { get; set; }
 }

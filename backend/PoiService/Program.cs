@@ -160,13 +160,18 @@ app.UseSwaggerUI();
 
 // ==========================================
 // 9. MIDDLEWARE PIPELINE
-// ==========================================
+
 app.UseCors("AllowReactFrontend");
 
-app.UseHttpsRedirection();
+// Chỉ bật HTTPS redirect khi môi trường đã cấu hình HTTPS port.
+if (builder.Configuration.GetValue<bool>("HttpsRedirection:Enabled"))
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
+
 
 // ==========================================
 // 10. MAP CONTROLLERS

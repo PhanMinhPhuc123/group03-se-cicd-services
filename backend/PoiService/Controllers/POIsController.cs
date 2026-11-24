@@ -54,8 +54,77 @@ public class POIsController : ControllerBase
         if (!includeHidden || !User.IsInRole("Admin"))
             query = query.Where(p => p.IsVisible);
 
-        return Ok(await query.OrderBy(p => p.Name).ToListAsync());
+        var pois = await query.OrderBy(p => p.Name).ToListAsync();
+
+        // Không trả object key nội bộ của MinIO cho frontend.
+        // Frontend luôn tải ảnh qua endpoint công khai của POI.
+        foreach (var poi in pois)
+        {
+            poi.ImageUrl = string.IsNullOrWhiteSpace(poi.ImageUrl)
+                ? null
+                : $"/api/POIs/{poi.PoiId}/image";
+        }
+
+        return Ok(pois);
     }
+
+
+[AllowAnonymous]
+[HttpGet("search")]
+public async Task<IActionResult> SearchPOIs(
+    [FromQuery] string keyword,
+    [FromQuery] bool includeHidden = false)
+{
+    if (string.IsNullOrWhiteSpace(keyword))
+        return BadRequest("Vui lòng nhập từ khóa tìm kiếm.");
+
+    keyword = NormalizeSearch(keyword);
+
+    if (keyword.Length > 100)
+        return BadRequest("Từ khóa không được vượt quá 100 ký tự.");
+
+    var query = _context.POIs.AsNoTracking();
+
+    // Khách chỉ được tìm kiếm POI đang hiển thị.
+    if (!includeHidden || !User.IsInRole("Admin"))
+        query = query.Where(p => p.IsVisible);
+
+    var pois = await query
+        .Select(p => new
+        {
+            p.PoiId,
+            p.Name,
+            p.Address,
+            p.Description,
+            p.Latitude,
+            p.Longitude,
+            p.ImageUrl,
+            p.IsVisible
+        })
+        .ToListAsync();
+
+    var result = pois
+        .Where(p =>
+            ContainsSearch(p.Name, keyword) ||
+            ContainsSearch(p.Address, keyword))
+        .OrderBy(p => p.Name)
+        .Select(p => new
+        {
+            p.PoiId,
+            p.Name,
+            p.Address,
+            p.Description,
+            p.Latitude,
+            p.Longitude,
+            ImageUrl = string.IsNullOrWhiteSpace(p.ImageUrl)
+                ? null
+                : $"/api/POIs/{p.PoiId}/image"
+        })
+        .ToList();
+
+    return Ok(result);
+}
+
 
     // ==========================================
     // 2. GET POI BY ID
@@ -73,7 +142,15 @@ public class POIsController : ControllerBase
 
         var poi = await query.FirstOrDefaultAsync();
 
-        return poi is null ? NotFound() : Ok(poi);
+        if (poi is null)
+            return NotFound();
+
+        // ImageUrl trong database là object key của MinIO; chỉ trả URL API.
+        poi.ImageUrl = string.IsNullOrWhiteSpace(poi.ImageUrl)
+            ? null
+            : $"/api/POIs/{poi.PoiId}/image";
+
+        return Ok(poi);
     }
 
     // ==========================================
@@ -440,8 +517,36 @@ public class POIsController : ControllerBase
         return Guid.TryParse(value, out var id) ? id : null;
     }
 
-    private static string NormalizeSearch(string? value) =>
-        (value ?? string.Empty).Trim().ToLowerInvariant();
+
+private static string NormalizeSearch(string? value)
+{
+    if (string.IsNullOrWhiteSpace(value))
+        return string.Empty;
+
+    var normalized = value.Trim().ToLowerInvariant()
+        .Normalize(System.Text.NormalizationForm.FormD);
+
+    var result = new System.Text.StringBuilder();
+
+    foreach (var c in normalized)
+    {
+        var category = System.Globalization.CharUnicodeInfo
+            .GetUnicodeCategory(c);
+
+        if (category != System.Globalization.UnicodeCategory.NonSpacingMark)
+            result.Append(c);
+    }
+
+    return result.ToString()
+        .Normalize(System.Text.NormalizationForm.FormC)
+        .Replace('đ', 'd');
+}
+
+    private static bool ContainsSearch(string? source, string keyword)
+{
+    return NormalizeSearch(source).Contains(keyword);
+}
+
 
     private static double ToRadians(double degrees) =>
         degrees * Math.PI / 180.0;

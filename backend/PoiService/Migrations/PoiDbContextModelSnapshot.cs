@@ -216,6 +216,9 @@ namespace PoiService.Migrations
                         .HasColumnType("numeric(10,7)")
                         .HasColumnName("longitude");
 
+                    b.Property<Guid?>("SelectedPoiId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("SelectedPoiName")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
