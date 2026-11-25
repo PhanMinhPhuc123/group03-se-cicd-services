@@ -1,0 +1,38 @@
+name: Project CI
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+  pull_request:
+    branches:
+      - develop
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compose-config:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Validate Compose configuration
+        working-directory: backend
+        env:
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: ci_db
+          RABBITMQ_DEFAULT_USER: ci_user
+          RABBITMQ_DEFAULT_PASS: ci_test_password
+          MINIO_ROOT_USER: ci_minio
+          MINIO_ROOT_PASSWORD: ci_minio_test_password
+        run: docker compose -f docker-compose.example.yml config --quiet

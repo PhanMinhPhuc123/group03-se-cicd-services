@@ -1,29 +1,64 @@
-using Microsoft.EntityFrameworkCore;
+
 using AuthService.Models;
+using Microsoft.EntityFrameworkCore;
 
-namespace AuthService.Data
+namespace AuthService.Data;
+
+public class AppDbContext : DbContext
 {
-    public class AppDbContext : DbContext
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options)
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+    }
+
+    public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<AdminUser>(entity =>
         {
-        }
+            entity.ToTable("admin_users", "public");
 
-        public DbSet<User> Users { get; set; }
-        public DbSet<Role> Roles { get; set; }
+            entity.HasKey(x => x.AdminId);
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
+            entity.Property(x => x.AdminId)
+                .HasColumnName("admin_id")
+                .HasDefaultValueSql("gen_random_uuid()");
 
-            // Cấu hình unique (không được trùng lặp) cho Username và Email
-            modelBuilder.Entity<User>()
-                .HasIndex(u => u.Username)
-                .IsUnique();
+            entity.Property(x => x.Username)
+                .HasColumnName("username")
+                .HasMaxLength(100)
+                .IsRequired();
 
-            modelBuilder.Entity<User>()
-                .HasIndex(u => u.Email)
-                .IsUnique();
-        }
+            entity.Property(x => x.PasswordHash)
+                .HasColumnName("password_hash")
+                .HasMaxLength(255)
+                .IsRequired();
+
+            entity.Property(x => x.DisplayName)
+                .HasColumnName("display_name")
+                .HasMaxLength(150)
+                .IsRequired();
+
+            entity.Property(x => x.IsActive)
+                .HasColumnName("is_active")
+                .HasDefaultValue(true);
+
+            entity.Property(x => x.CreatedAt)
+                .HasColumnName("created_at")
+                .HasColumnType("timestamp with time zone")
+                .HasDefaultValueSql("now()")
+                .IsRequired();
+
+            entity.Property(x => x.UpdatedAt)
+                .HasColumnName("updated_at")
+                .HasColumnType("timestamp with time zone");
+
+            entity.Property(x => x.LastLoginAt)
+                .HasColumnName("last_login_at")
+                .HasColumnType("timestamp with time zone");
+        });
     }
 }
