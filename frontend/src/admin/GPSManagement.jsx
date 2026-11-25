@@ -83,7 +83,7 @@ function normalizePOI(item) {
       getField(item, "description", "Description") ||
       "Chưa có mô tả.",
     location:
-      getField(item, "location", "Location") ||
+      getField(item, "address", "Address", "location", "Location") ||
       "Chưa có thông tin địa chỉ.",
     latitude,
     longitude,
@@ -525,4 +525,5 @@ export default function GPSManagement() {
     </main>
   );
 }
+
 
