@@ -59,29 +59,6 @@ Dự án sử dụng kiến trúc Microservices, trong đó mỗi service chịu
 | RabbitMQ | Hỗ trợ xử lý bất đồng bộ |
 | Docker | Đóng gói và quản lý môi trường chạy dịch vụ |
 
-### Architecture Diagram
-
-```mermaid
-flowchart TD
-    A[Tourist / Admin] --> B[Frontend]
-    B --> C[API Gateway]
-
-    C --> D[Auth Service]
-    C --> E[POI Service]
-    C --> F[AI Service]
-
-    D --> G[(Auth Database)]
-    E --> H[(POI Database)]
-    F --> I[(AI Database)]
-
-    F --> E
-    F --> J[Ollama]
-    J --> F
-    F --> K[Piper TTS]
-    K --> L[MinIO]
-    F --> M[RabbitMQ]
-```
-
 ## 4. Database Architecture
 
 Hệ thống sử dụng PostgreSQL và phân chia dữ liệu thành ba database theo trách nhiệm của từng service.
