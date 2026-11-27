@@ -1892,17 +1892,28 @@ function App() {
     return <AdminLogin />
   }
 
-  // Chỉ cho phép vào dashboard khi đã có token.
-  if (path === '/admin/visits') {
-    const token = sessionStorage.getItem('adminToken')
+  // Chỉ cho phép vào dashboard khi JWT còn hạn (JWT backend đặt hạn 24 giờ).
+if (path === '/admin/visits') {
+  const token = sessionStorage.getItem('adminToken')
+  let tokenValid = false
 
-    if (!token) {
-      window.location.replace('/admin/login')
-      return null
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+      tokenValid = typeof payload.exp === 'number' && payload.exp * 1000 > Date.now()
+    } catch {
+      tokenValid = false
     }
-
-    return <VisitDashboard />
   }
+
+  if (!tokenValid) {
+    sessionStorage.removeItem('adminToken')
+    window.location.replace('/admin/login')
+    return null
+  }
+
+  return <VisitDashboard />
+}
 
   // Giữ nguyên website dành cho khách tham quan.
   return <TourismHome />
