@@ -467,7 +467,7 @@ public sealed class NarrationController : ControllerBase
                             audioBytes,
                             cancellationToken);
 
-                    var objectKey = $"{Guid.NewGuid():N}.mp3";
+                    var objectKey = $"audio-storage/{Guid.NewGuid():N}.mp3";
 
                     // Assign before upload so a partially completed upload can be cleaned up.
                     uploadedObjectKey = objectKey;
@@ -679,23 +679,35 @@ public sealed class NarrationController : ControllerBase
     /// <summary>
     /// Downloads generated narration audio for browser playback.
     /// </summary>
-    [HttpGet("audio/{objectName}")]
+
+    [HttpGet("audio")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> GetAudio(
-        string objectName,
+        [FromQuery] string objectKey,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(objectName) ||
-            !objectName.EndsWith(
-                ".mp3",
-                StringComparison.OrdinalIgnoreCase) ||
-            !Guid.TryParseExact(
-                objectName[..^4],
-                "N",
-                out _))
+        if (string.IsNullOrWhiteSpace(objectKey))
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message = "Tên tệp audio không hợp lệ."
+            });
+        }
+
+        // Hỗ trợ cả audio cũ ở bucket gốc và audio mới trong folder.
+        var fileName = objectKey.StartsWith(
+            "audio-storage/",
+            StringComparison.Ordinal)
+            ? objectKey["audio-storage/".Length..]
+            : objectKey;
+
+        if (fileName.Contains('/') ||
+            !fileName.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase) ||
+            !Guid.TryParseExact(fileName[..^4], "N", out _))
         {
             return BadRequest(new
             {
@@ -707,7 +719,7 @@ public sealed class NarrationController : ControllerBase
         try
         {
             var bytes = await _minio.DownloadAudioAsync(
-                objectName,
+                objectKey,
                 cancellationToken);
 
             return File(
@@ -730,7 +742,10 @@ public sealed class NarrationController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to download audio object {ObjectName}.", objectName);
+            _logger.LogError(
+                ex,
+                "Failed to download audio object {ObjectKey}.",
+                objectKey);
 
             return StatusCode(StatusCodes.Status502BadGateway, new
             {
@@ -740,6 +755,7 @@ public sealed class NarrationController : ControllerBase
             });
         }
     }
+
 
     private static async Task<decimal> GetAudioDurationSecondsAsync(
         byte[] audioBytes,
@@ -858,7 +874,7 @@ public sealed class NarrationController : ControllerBase
                 audioId = audio.AudioId,
                 contentType = audio.ContentType,
                 sizeBytes = audio.SizeBytes,
-                audioUrl = $"{Request.Scheme}://{Request.Host}/api/ai/audio/" +
+                audioUrl = $"{Request.Scheme}://{Request.Host}/api/ai/audio?objectKey=" +
                     Uri.EscapeDataString(audio.ObjectKey)
             };
 
